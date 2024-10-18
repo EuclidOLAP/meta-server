@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 8763;
 
 // 根路由响应
 app.get('/', (req, res) => {
-  res.send('<h1>EuclidOLAP Meta Server.</h1>');
+  res.send('<h1>EuclidOLAP Meta Server</h1>');
 });
 
 // 启动服务器
