@@ -1,6 +1,9 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const app = express();
 const cors = require('cors');  // 引入 CORS 中间件
+
+const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
@@ -12,6 +15,11 @@ app.use(cors({
   credentials: true              // 如果需要处理认证或cookie，可以启用此选项
 }));
 
+app.use(bodyParser.json()); // 解析 JSON 请求体
+
+// 使用维度路由
+app.use('/api', dimensionRoutes);
+
 // 根路由响应
 app.get('/', (req, res) => {
   res.send('<h1>EuclidOLAP Meta Server</h1>');
@@ -22,9 +30,9 @@ app.get('/api/data', (req, res) => {
   res.json({
     success: true,
     data: [
-      { id: 1, name: '产品A 1111111111111111111111111111', value: 100 },
-      { id: 2, name: '产品B 222222222222222222222222222', value: 200 },
-      { id: 3, name: '产品C 3333333333333333333', value: 300 }
+      { id: 1, name: '产品A', value: 100 },
+      { id: 2, name: '产品B', value: 200 },
+      { id: 3, name: '产品C', value: 300 }
     ]
   });
 });
