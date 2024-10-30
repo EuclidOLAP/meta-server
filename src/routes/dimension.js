@@ -8,6 +8,16 @@ const Hierarchy = require('../../models/Hierarchy');
 const Level = require('../../models/Level');
 const Member = require('../../models/Member');
 
+// 新增：获取所有维度的接口
+router.get('/dimensions', async (req, res) => {
+  try {
+    const dimensions = await Dimension.findAll(); // 查询所有维度
+    res.json({ success: true, data: dimensions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching dimensions', error });
+  }
+});
+
 // POST 请求，创建维度对象
 router.post('/dimension', async (req, res) => {
   /**
