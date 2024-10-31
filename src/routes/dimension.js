@@ -8,6 +8,16 @@ const Hierarchy = require('../../models/Hierarchy');
 const Level = require('../../models/Level');
 const Member = require('../../models/Member');
 
+// 新增：获取所有维度的接口
+router.get('/dimensions', async (req, res) => {
+  try {
+    const dimensions = await Dimension.findAll(); // 查询所有维度
+    res.json({ success: true, data: dimensions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error fetching dimensions', error });
+  }
+});
+
 // POST 请求，创建维度对象
 router.post('/dimension', async (req, res) => {
   /**
@@ -70,5 +80,29 @@ router.post('/dimension', async (req, res) => {
   }
 
 });
+
+
+// 获取指定维度的成员树结构
+router.get('/dimension/:gid/members', async (req, res) => {
+  const dimensionGid = req.params.gid;
+
+  try {
+    // 查询指定维度的所有成员
+    const members = await Member.findAll({
+      where: { dimensionGid }
+    });
+
+    const member_list = [];
+    members.forEach((m) => {
+      member_list.push({ ...m.dataValues });
+    });
+
+    res.json({ success: true, members: member_list });
+  } catch (error) {
+    console.error('Error fetching members for dimension:', error);
+    res.status(500).json({ success: false, message: 'Error fetching members', error });
+  }
+});
+
 
 module.exports = router;
