@@ -104,5 +104,50 @@ router.get('/dimension/:gid/members', async (req, res) => {
   }
 });
 
+// create a new child dimension member
+router.post('/child-member', async (req, res) => {
+  const { newChildMemberName, parentGid } = req.body;
+  const parentMember = await Member.findByPk(parentGid);
+
+  let childMemberLevel = await Level.findOne({
+    where: {
+      hierarchyGid: parentMember.hierarchyGid,
+      level: parentMember.level + 1,
+    }
+  });
+
+  const transaction = await sequelize_conn.transaction();
+  try {
+    if (!childMemberLevel) {
+      const dimension = await Dimension.findByPk(parentMember.dimensionGid);
+      const hierarchy = await Hierarchy.findByPk(parentMember.hierarchyGid);
+      childMemberLevel = await Level.create({
+        name: `${dimension.name} ${hierarchy.name} level ${parentMember.level + 1}`,
+        dimensionGid: dimension.gid,
+        hierarchyGid: hierarchy.gid,
+        level: parentMember.level + 1,
+      }, { transaction });
+    }
+
+    // Member：name, dimension_gid, hierarchy_gid, level_gid, level, parent_gid
+    const newChildMember = await Member.create({
+      name: newChildMemberName,
+      dimensionGid: parentMember.dimensionGid,
+      hierarchyGid: parentMember.hierarchyGid,
+      levelGid: childMemberLevel.gid,
+      level: childMemberLevel.level,
+      parentGid: parentGid
+    }, { transaction });
+
+    // 提交事务
+    await transaction.commit();
+    // 返回成功的响应
+    res.status(201).json(newChildMember);
+  } catch (error) {
+    await transaction.rollback(); // 如果出现任何错误，回滚事务
+    console.error(error.message);
+    res.status(500).json({ error: 'Failed to create dimension with related data', details: error.message });
+  }
+});
 
 module.exports = router;
