@@ -150,4 +150,51 @@ router.post('/child-member', async (req, res) => {
   }
 });
 
+// 获取指定 Dimension 下的所有 Hierarchy
+router.get('/dimension/:gid/hierarchies', async (req, res) => {
+  const dimensionGid = req.params.gid; // 从请求参数中获取 Dimension GID
+
+  try {
+    // 查找与指定 dimensionGid 相关的所有 Hierarchy
+    const hierarchies = await Hierarchy.findAll({
+      where: { dimensionGid }
+    });
+
+    // 构建返回的层级列表
+    const hierarchyList = hierarchies.map(hierarchy => ({
+      ...hierarchy.dataValues
+    }));
+
+    // 返回成功的响应
+    res.json({ success: true, hierarchies: hierarchyList });
+  } catch (error) {
+    console.error('Error fetching hierarchies for dimension:', error);
+    res.status(500).json({ success: false, message: 'Error fetching hierarchies', error });
+  }
+});
+
+// 获取指定 Hierarchy 下的所有 Member
+router.get('/hierarchy/:gid/members', async (req, res) => {
+  const hierarchyGid = req.params.gid; // 从请求参数中获取 Hierarchy GID
+
+  try {
+    // 查找与指定 hierarchyGid 相关的所有 Member
+    const members = await Member.findAll({
+      where: { hierarchyGid }
+    });
+
+    // 构建返回的成员列表
+    const memberList = members.map(member => ({
+      ...member.dataValues
+    }));
+
+    // 返回成功的响应
+    res.json({ success: true, members: memberList });
+  } catch (error) {
+    console.error('Error fetching members for hierarchy:', error);
+    res.status(500).json({ success: false, message: 'Error fetching members', error });
+  }
+});
+
+
 module.exports = router;
