@@ -38,7 +38,9 @@ router.get('/dimensionRoles', async (req, res) => {
   }
 });
 
-const do_create_dimension = async ({ name, type, transaction }) => {
+const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, transaction }) => {
+  defaultHierarchyName = defaultHierarchyName || name;
+  levels = levels || [];
 
   /**
    * 当一个Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
@@ -51,7 +53,7 @@ const do_create_dimension = async ({ name, type, transaction }) => {
 
     // Hierarchy：name, dimension_gid
     const default_hierarchy = await Hierarchy.create({
-      name,
+      name: defaultHierarchyName,
       dimensionGid: dimension.gid
     }, { transaction });
 
@@ -62,6 +64,15 @@ const do_create_dimension = async ({ name, type, transaction }) => {
       hierarchyGid: default_hierarchy.gid,
       level: 0
     }, { transaction });
+
+    for (const [index, level_name] of levels.entries()) {
+      const _level = await Level.create({
+        name: level_name,
+        dimensionGid: dimension.gid,
+        hierarchyGid: default_hierarchy.gid,
+        level: index + 1
+      }, { transaction });
+    }
 
     // Member：name, dimension_gid, hierarchy_gid, level_gid, level, parent_gid
     const root_member = await Member.create({
@@ -147,12 +158,12 @@ router.post('/dimension', async (req, res) => {
    * 然后更新Dimension的defaultHierarchyGid
    */
 
-  const { name } = req.body;
+  const { name, defaultHierarchyName, levels } = req.body;
 
   const transaction = await sequelize_conn.transaction();
 
   // 度量维度会在构建Cube时自动创建，凡是调用API创建的维度，都是非度量维度
-  const result = await do_create_dimension({ name, type: 'NOT_MEASURE_DIMENSION', transaction });
+  const result = await do_create_dimension({ name, defaultHierarchyName, levels, type: 'NOT_MEASURE_DIMENSION', transaction });
 
   if (result) {
     // 提交事务
