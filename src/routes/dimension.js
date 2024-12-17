@@ -1,4 +1,7 @@
 const express = require('express');
+const { AsyncLocalStorage } = require('async_hooks');
+const asyncLocalStorage = new AsyncLocalStorage();
+
 const router = express.Router();
 
 const sequelize_conn = require('../../config/database');
@@ -38,9 +41,10 @@ router.get('/dimensionRoles', async (req, res) => {
   }
 });
 
-const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, transaction }) => {
+const do_create_dimension = async ({ name, defaultHierarchyName, levels, membersTree, type, transaction }) => {
   defaultHierarchyName = defaultHierarchyName || name;
   levels = levels || [];
+  membersTree = membersTree || [];
 
   /**
    * 当一个Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
@@ -57,6 +61,12 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, t
       dimensionGid: dimension.gid
     }, { transaction });
 
+    const context = {
+      dimension,
+      hierarchy: default_hierarchy,
+      levels: [],
+    };
+
     // Level：name, dimension_gid, hierarchy_gid, level
     const root_level = await Level.create({
       name: 'root-level',
@@ -65,6 +75,8 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, t
       level: 0
     }, { transaction });
 
+    context.levels.push(root_level);
+
     for (const [index, level_name] of levels.entries()) {
       const _level = await Level.create({
         name: level_name,
@@ -72,6 +84,7 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, t
         hierarchyGid: default_hierarchy.gid,
         level: index + 1
       }, { transaction });
+      context.levels.push(_level);
     }
 
     // Member：name, dimension_gid, hierarchy_gid, level_gid, level, parent_gid
@@ -87,6 +100,11 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, t
     // 更新 Dimension 的 defaultHierarchyGid 字段
     await dimension.update({ defaultHierarchyGid: default_hierarchy.gid }, { transaction });
 
+    if (membersTree && membersTree.length > 0) {
+        asyncLocalStorage.enterWith(context);
+        await createMembersTree(root_member, membersTree, transaction);
+    }
+
     return {
       dimension,
       default_hierarchy,
@@ -98,6 +116,17 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, type, t
     return null;
   }
 
+};
+
+const createMembersTree = async (parent, children_fragments, transaction) => {
+
+  // createChildMember
+  for (const child_fragment of children_fragments) {
+    let new_member = await createChildMember(parent, child_fragment.fragment, transaction);
+    if (child_fragment.children && child_fragment.children.length > 0) {
+      await createMembersTree(new_member, child_fragment.children, transaction);
+    }
+  }
 };
 
 // POST /api/cube - 创建一个新的Cube
@@ -158,12 +187,12 @@ router.post('/dimension', async (req, res) => {
    * 然后更新Dimension的defaultHierarchyGid
    */
 
-  const { name, defaultHierarchyName, levels } = req.body;
+  const { name, defaultHierarchyName, levels, membersTree } = req.body;
 
   const transaction = await sequelize_conn.transaction();
 
   // 度量维度会在构建Cube时自动创建，凡是调用API创建的维度，都是非度量维度
-  const result = await do_create_dimension({ name, defaultHierarchyName, levels, type: 'NOT_MEASURE_DIMENSION', transaction });
+  const result = await do_create_dimension({ name, defaultHierarchyName, levels, membersTree, type: 'NOT_MEASURE_DIMENSION', transaction });
 
   if (result) {
     // 提交事务
@@ -206,41 +235,55 @@ router.get('/dimension/:gid/members', async (req, res) => {
   }
 });
 
+const createChildMember = async (parent, childMemberName, transaction) => {
+
+  const context = asyncLocalStorage.getStore();
+
+  let childMemberLevel = context.levels[parent.level + 1];
+  if (!childMemberLevel) {
+    childMemberLevel = await Level.findOne({
+      where: {
+        hierarchyGid: parent.hierarchyGid,
+        level: parent.level + 1,
+      }
+    });
+  }
+
+  if (!childMemberLevel) {
+    let dimension = await Dimension.findByPk(parent.dimensionGid);
+    dimension = dimension ? dimension : context.dimension;
+
+    let hierarchy = await Hierarchy.findByPk(parent.hierarchyGid);
+    hierarchy = hierarchy ? hierarchy : context.hierarchy;
+
+    childMemberLevel = await Level.create({
+      name: `${dimension.name} ${hierarchy.name} level ${parent.level + 1}`,
+      dimensionGid: dimension.gid,
+      hierarchyGid: hierarchy.gid,
+      level: parent.level + 1,
+    }, { transaction });
+  }
+
+  // Member：name, dimension_gid, hierarchy_gid, level_gid, level, parent_gid
+  const child = await Member.create({
+    name: childMemberName,
+    dimensionGid: parent.dimensionGid,
+    hierarchyGid: parent.hierarchyGid,
+    levelGid: childMemberLevel.gid,
+    level: childMemberLevel.level,
+    parentGid: parent.gid
+  }, { transaction });
+
+  return child;
+};
+
 // create a new child dimension member
 router.post('/child-member', async (req, res) => {
   const { newChildMemberName, parentGid } = req.body;
   const parentMember = await Member.findByPk(parentGid);
-
-  let childMemberLevel = await Level.findOne({
-    where: {
-      hierarchyGid: parentMember.hierarchyGid,
-      level: parentMember.level + 1,
-    }
-  });
-
   const transaction = await sequelize_conn.transaction();
   try {
-    if (!childMemberLevel) {
-      const dimension = await Dimension.findByPk(parentMember.dimensionGid);
-      const hierarchy = await Hierarchy.findByPk(parentMember.hierarchyGid);
-      childMemberLevel = await Level.create({
-        name: `${dimension.name} ${hierarchy.name} level ${parentMember.level + 1}`,
-        dimensionGid: dimension.gid,
-        hierarchyGid: hierarchy.gid,
-        level: parentMember.level + 1,
-      }, { transaction });
-    }
-
-    // Member：name, dimension_gid, hierarchy_gid, level_gid, level, parent_gid
-    const newChildMember = await Member.create({
-      name: newChildMemberName,
-      dimensionGid: parentMember.dimensionGid,
-      hierarchyGid: parentMember.hierarchyGid,
-      levelGid: childMemberLevel.gid,
-      level: childMemberLevel.level,
-      parentGid: parentGid
-    }, { transaction });
-
+    const newChildMember = await createChildMember(parentMember, newChildMemberName, transaction);
     // 提交事务
     await transaction.commit();
     // 返回成功的响应
