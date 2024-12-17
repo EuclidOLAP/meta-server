@@ -4,6 +4,7 @@ const app = express();
 const cors = require('cors');  // 引入 CORS 中间件
 
 const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
+const md_query_api_routes = require('./routes/md-query-api');
 
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
@@ -19,6 +20,8 @@ app.use(bodyParser.json()); // 解析 JSON 请求体
 
 // 使用维度路由
 app.use('/api', dimensionRoutes);
+
+app.use('/md-query', md_query_api_routes);
 
 // 根路由响应
 app.get('/', (req, res) => {
