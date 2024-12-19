@@ -10,6 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@grpc/grpc-js": "^1.12.4",
+    "@grpc/proto-loader": "^0.7.13",
     "cors": "^2.8.5",
     "express": "^4.21.1",
     "mysql2": "^3.11.3",
