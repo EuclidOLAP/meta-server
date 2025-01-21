@@ -44,3 +44,59 @@ app.get('/api/data', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Meta-server is running on port ${PORT}`);
 });
+
+
+/*
+ * olap meta grpc server
+ */
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
+
+// 1. 加载 .proto 文件
+const PROTO_PATH = './proto/olapmeta.proto';  // 根据你的实际路径调整
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
+});
+const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
+const olapmeta = protoDescriptor.olapmeta;
+
+// 2. 创建服务端并实现服务
+function getCubeByGid(call, callback) {
+  // 假设你有一个根据 GID 查询的实现逻辑
+  const gid = call.request.gid;
+  console.log(`Fetching Cube with GID: ${gid}`);
+  // 假数据，实际应该从数据库或其他存储获取
+  const cubeMeta = {
+    gid: gid * 100,
+    name: `Cube-${gid}`
+  };
+  callback(null, { cubeMeta });
+}
+
+function getCubeByName(call, callback) {
+  const name = call.request.name;
+  console.log(`Fetching Cube with Name: ${name}`);
+  // 假数据，实际应该从数据库或其他存储获取
+  const cubeMeta = {
+    gid: 99000000123,  // 假设每个 Cube 都有一个 gid
+    name: `Cube ... ${name}`
+  };
+  callback(null, { cubeMeta });
+}
+
+// 3. 创建 gRPC 服务
+const server = new grpc.Server();
+server.addService(olapmeta.OlapMetaService.service, {
+  GetCubeByGid: getCubeByGid,
+  GetCubeByName: getCubeByName
+});
+
+// 4. 启动服务端
+const port = '50051';
+server.bindAsync(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure(), () => {
+  console.log(`Server running at http://127.0.0.1:${port}`);
+});
