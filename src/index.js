@@ -6,6 +6,8 @@ const cors = require('cors');  // 引入 CORS 中间件
 const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 const md_query_api_routes = require('./routes/md-query-api');
 
+const Cube = require('../models/Cube');
+
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
 
@@ -66,26 +68,44 @@ const olapmeta = protoDescriptor.olapmeta;
 
 // 2. 创建服务端并实现服务
 function getCubeByGid(call, callback) {
-  // 假设你有一个根据 GID 查询的实现逻辑
-  const gid = call.request.gid;
-  console.log(`Fetching Cube with GID: ${gid}`);
-  // 假数据，实际应该从数据库或其他存储获取
-  const cubeMeta = {
-    gid: gid * 100,
-    name: `Cube-${gid}`
-  };
-  callback(null, { cubeMeta });
+
+  Cube.findOne({
+    where: {
+      gid: call.request.gid
+    }
+  }).then(cube => {
+    if (cube) {
+      const cubeMeta = {
+        gid: cube.gid,
+        name: cube.name
+      };
+      callback(null, { cubeMeta });
+    } else {
+      callback(new Error('Cube not found'), null);
+    }
+  }).catch(err => {
+    callback(err, null);
+  });
 }
 
 function getCubeByName(call, callback) {
-  const name = call.request.name;
-  console.log(`Fetching Cube with Name: ${name}`);
-  // 假数据，实际应该从数据库或其他存储获取
-  const cubeMeta = {
-    gid: 99000000123,  // 假设每个 Cube 都有一个 gid
-    name: `Cube ... ${name}`
-  };
-  callback(null, { cubeMeta });
+  Cube.findOne({
+    where: {
+      name: call.request.name
+    }
+  }).then(cube => {
+    if (cube) {
+      const cubeMeta = {
+        gid: cube.gid,
+        name: cube.name
+      };
+      callback(null, { cubeMeta });
+    } else {
+      callback(new Error('Cube not found'), null);
+    }
+  }).catch(err => {
+    callback(err, null);
+  });
 }
 
 // 3. 创建 gRPC 服务
