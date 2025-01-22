@@ -7,6 +7,7 @@ const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 const md_query_api_routes = require('./routes/md-query-api');
 
 const Cube = require('../models/Cube');
+const DimensionRole = require('../models/DimensionRole');
 
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
@@ -108,11 +109,41 @@ function getCubeByName(call, callback) {
   });
 }
 
+function getDimensionRolesByCubeGid(call, callback) {
+
+    // 使用 Cube GID 查询 DimensionRole 数据
+    DimensionRole.findAll({
+      where: {
+        cubeGid: call.request.gid // 传入的 Cube GID
+      }
+    }).then(dimensionRoles => {
+      // 如果找到数据，则返回数据
+      if (dimensionRoles && dimensionRoles.length > 0) {
+        // 构造返回的响应数据
+        const response = {
+          dimensionRoles: dimensionRoles.map(role => ({
+            gid: role.gid,
+            name: role.name,
+            cubeGid: role.cubeGid,
+            dimensionGid: role.dimensionGid
+          }))
+        };
+        callback(null, response);
+      } else {
+        callback(new Error('No dimension roles found for the given Cube GID'), null);
+      }
+    }).catch(err => {
+      // 错误处理
+      callback(err, null);
+    });
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
   GetCubeByGid: getCubeByGid,
-  GetCubeByName: getCubeByName
+  GetCubeByName: getCubeByName,
+  GetDimensionRolesByCubeGid: getDimensionRolesByCubeGid
 });
 
 // 4. 启动服务端
