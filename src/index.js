@@ -115,7 +115,8 @@ function getDimensionRolesByCubeGid(call, callback) {
     DimensionRole.findAll({
       where: {
         cubeGid: call.request.gid // 传入的 Cube GID
-      }
+      },
+      order: [['gid', 'ASC']] // 按 gid 从小到大排序
     }).then(dimensionRoles => {
       // 如果找到数据，则返回数据
       if (dimensionRoles && dimensionRoles.length > 0) {
