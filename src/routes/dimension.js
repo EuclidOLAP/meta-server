@@ -157,6 +157,7 @@ router.post('/cube', async (req, res) => {
       }, { transaction });
     }
 
+    // 创建非度量维度角色
     for (const dimensionRoleInfo of dimensionRoles) {
       for (const role_str of dimensionRoleInfo.roles) {
         let _dimensionRole = await DimensionRole.create({
@@ -166,6 +167,13 @@ router.post('/cube', async (req, res) => {
         }, { transaction });
       }
     }
+
+    // 创建度量维度角色
+    let _measureDimensionRole = await DimensionRole.create({
+      name: 'Measures',
+      dimensionGid: dimension.gid,
+      cubeGid: cube.gid
+    }, { transaction });
 
     // 提交事务
     await transaction.commit();
