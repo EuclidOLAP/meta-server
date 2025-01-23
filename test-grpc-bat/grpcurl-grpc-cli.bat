@@ -20,3 +20,40 @@ grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"n
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"ccvv\"}" %server% olapmeta.OlapMetaService/GetCubeByName
 
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"Nile River Store\"}" %server% olapmeta.OlapMetaService/GetCubeByName
+
+echo ">>>>>>>>> GetDimensionRolesByCubeGid >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"gid\": 500000000000001}" %server% olapmeta.OlapMetaService/GetDimensionRolesByCubeGid
+
+echo '-------------------------'
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"gid\": 500000000000002}" %server% olapmeta.OlapMetaService/GetDimensionRolesByCubeGid
+
+echo '-------------------------'
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"gid\": 500000000000003}" %server% olapmeta.OlapMetaService/GetDimensionRolesByCubeGid
+
+echo '-------------------------'
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"gid\": 500000000000004}" %server% olapmeta.OlapMetaService/GetDimensionRolesByCubeGid
+
+echo '-------------------------'
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"gid\": 510000000000004}" %server% olapmeta.OlapMetaService/GetDimensionRolesByCubeGid
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>> GetDefaultDimensionMemberByDimensionGid >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"dimensionGid\": 100000000000019}" %server% olapmeta.OlapMetaService/GetDefaultDimensionMemberByDimensionGid
+
+echo '--------------------------------------------------'
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"dimensionGid\": 100000000000023}" %server% olapmeta.OlapMetaService/GetDefaultDimensionMemberByDimensionGid
