@@ -8,6 +8,8 @@ const md_query_api_routes = require('./routes/md-query-api');
 
 const Cube = require('../models/Cube');
 const DimensionRole = require('../models/DimensionRole');
+const Dimension = require('../models/Dimension');
+const Member = require('../models/Member');
 
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
@@ -139,12 +141,56 @@ function getDimensionRolesByCubeGid(call, callback) {
     });
 }
 
+function GetDefaultDimensionMemberByDimensionGid(call, callback) {
+
+  const dim_gid = call.request.dimensionGid;
+
+  Dimension.findByPk(dim_gid)
+
+    .then(dimension => {
+
+      const def_hier_gid = dimension.defaultHierarchyGid;
+
+      // 查询维度对应的Hierarchy，然后查询Root Member，暂时以维度默认Hierarchy的Root Member为默认Member
+      Member.findOne({
+        where: {
+          hierarchyGid: def_hier_gid,
+          parentGid: 0
+        }
+      }).then(member => {
+
+        console.log(member);
+
+        member = member.dataValues;
+
+        callback(null, {
+          gid: member.gid,
+          name: member.name,
+          dimensionGid: member.dimensionGid,
+          hierarchyGid: member.hierarchyGid,
+          levelGid: member.levelGid,
+          level: member.level,
+          parentGid: member.parentGid,
+        });
+
+      }).catch(err => {
+        callback(err, null);
+      });
+
+    }) // then end
+
+    .catch(err => {
+      callback(err, null);
+    });
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
   GetCubeByGid: getCubeByGid,
   GetCubeByName: getCubeByName,
-  GetDimensionRolesByCubeGid: getDimensionRolesByCubeGid
+  GetDimensionRolesByCubeGid: getDimensionRolesByCubeGid,
+  GetDefaultDimensionMemberByDimensionGid: GetDefaultDimensionMemberByDimensionGid
 });
 
 // 4. 启动服务端
