@@ -64,3 +64,13 @@ echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
     -d "{\"dimensionRoleGid\": 600000000000003}" %server% olapmeta.OlapMetaService/GetDimensionRoleByGid
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>  GetDimensionRoleByName  >>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"cubeGid\": 500000000000004, \"dimensionRoleName\":\"GGGGGGGGGGGGGGG\"}" %server% olapmeta.OlapMetaService/GetDimensionRoleByName
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"cubeGid\": 500000000000006, \"dimensionRoleName\":\"Measures\"}" %server% olapmeta.OlapMetaService/GetDimensionRoleByName
