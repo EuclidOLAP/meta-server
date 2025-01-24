@@ -57,3 +57,10 @@ echo '--------------------------------------------------'
 
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
     -d "{\"dimensionGid\": 100000000000023}" %server% olapmeta.OlapMetaService/GetDefaultDimensionMemberByDimensionGid
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>  GetDimensionRoleByGid  >>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"dimensionRoleGid\": 600000000000003}" %server% olapmeta.OlapMetaService/GetDimensionRoleByGid
