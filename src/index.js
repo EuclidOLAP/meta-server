@@ -218,6 +218,42 @@ function GetDimensionRoleByGid(call, callback) {
   });
 }
 
+function GetDimensionRoleByName(call, callback) {
+  const { cubeGid, dimensionRoleName } = call.request;  // 获取请求中的 Cube GID 和 DimensionRole 名称
+
+  // 使用 cubeGid 和 dimensionRoleName 查找 DimensionRole
+  DimensionRole.findOne({
+    where: { 
+      cubeGid: cubeGid, 
+      name: dimensionRoleName 
+    }
+  })
+  .then(dimensionRole => {
+    if (dimensionRole) {
+      // 如果找到数据，构造返回的响应数据
+      const response = {
+        gid: dimensionRole.gid,
+        code: dimensionRole.code,
+        name: dimensionRole.name,
+        alias: dimensionRole.alias,
+        display: dimensionRole.display,
+        created_by: dimensionRole.created_by,
+        updated_by: dimensionRole.updated_by,
+        description: dimensionRole.description,
+        cubeGid: dimensionRole.cubeGid,
+        dimensionGid: dimensionRole.dimensionGid,
+      };
+      callback(null, response);  // 返回查询到的数据
+    } else {
+      // 如果没有找到 DimensionRole，返回错误
+      callback(new Error('Dimension Role not found'), null);
+    }
+  })
+  .catch(err => {
+    // 错误处理
+    callback(err, null);
+  });
+}
 
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
@@ -226,7 +262,8 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetCubeByName: getCubeByName,
   GetDimensionRolesByCubeGid: getDimensionRolesByCubeGid,
   GetDefaultDimensionMemberByDimensionGid: GetDefaultDimensionMemberByDimensionGid,
-  GetDimensionRoleByGid: GetDimensionRoleByGid
+  GetDimensionRoleByGid: GetDimensionRoleByGid,
+  GetDimensionRoleByName: GetDimensionRoleByName,
 });
 
 // 4. 启动服务端
