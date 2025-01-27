@@ -74,3 +74,31 @@ grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
 
 grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
     -d "{\"cubeGid\": 500000000000006, \"dimensionRoleName\":\"Measures\"}" %server% olapmeta.OlapMetaService/GetDimensionRoleByName
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>  GetCubeByName  >>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"CCC\"}" %server% olapmeta.OlapMetaService/GetCubeByName
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"C2\"}" %server% olapmeta.OlapMetaService/GetCubeByName
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"ccvv\"}" %server% olapmeta.OlapMetaService/GetCubeByName
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" -d "{\"name\": \"Nile River Store\"}" %server% olapmeta.OlapMetaService/GetCubeByName
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>  LocateUniversalOlapEntityByGid  >>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"originGid\": 600000000000023, \"targetEntityGid\": 300000000004617, \"targetEntityName\": \"\"}" ^
+    %server% olapmeta.OlapMetaService/LocateUniversalOlapEntityByGid
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>  LocateUniversalOlapEntityByName  >>>>>>>>>>>>>>>"
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+grpcurl --plaintext --import-path "%proto_path%" --proto "%proto_file%" ^
+    -d "{\"originGid\": 10123, \"targetEntityGid\": 3333, \"targetEntityName\": \"OOOOO\"}" ^
+    %server% olapmeta.OlapMetaService/LocateUniversalOlapEntityByName
