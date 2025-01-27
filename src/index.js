@@ -11,6 +11,8 @@ const DimensionRole = require('../models/DimensionRole');
 const Dimension = require('../models/Dimension');
 const Member = require('../models/Member');
 
+const { OlapEntityType, getOlapEntityTypeByGid } = require('./utils');
+
 // 设置端口号，默认 3000
 const PORT = process.env.PORT || 8763;
 
@@ -255,6 +257,37 @@ function GetDimensionRoleByName(call, callback) {
   });
 }
 
+async function LocateUniversalOlapEntityByGid(call, callback) {
+
+  const { originGid, targetEntityGid } = call.request;
+
+  let result = {
+    olapEntityClass: "Nothing",
+  };
+
+  switch (getOlapEntityTypeByGid(originGid)) {
+    case OlapEntityType.DIMENSION_ROLE:
+        const dim_role = await DimensionRole.findByPk(originGid);
+        const dim_gid = dim_role.dataValues.dimensionGid
+        const member = await Member.findOne({
+          where: {
+            gid: targetEntityGid,
+            dimensionGid: dim_gid
+          }
+        });
+        result = { olapEntityClass: "Member", ...member.dataValues };
+        break;
+  }
+
+  callback(null, result);
+}
+
+async function LocateUniversalOlapEntityByName(call, callback) {
+  const dim = await Dimension.findByPk(100000000000003);
+  let result = { olapEntityClass: "Dimension", ...dim.dataValues };
+  callback(null, result);
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -264,6 +297,8 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetDefaultDimensionMemberByDimensionGid: GetDefaultDimensionMemberByDimensionGid,
   GetDimensionRoleByGid: GetDimensionRoleByGid,
   GetDimensionRoleByName: GetDimensionRoleByName,
+  LocateUniversalOlapEntityByGid: LocateUniversalOlapEntityByGid,
+  LocateUniversalOlapEntityByName: LocateUniversalOlapEntityByName,
 });
 
 // 4. 启动服务端
