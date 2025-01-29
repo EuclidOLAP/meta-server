@@ -14,7 +14,7 @@ const olapClient = new olapProto.OlapApi(
   grpc.credentials.createInsecure()
 );
 
-console.log('gRPC client created <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<', olapClient);
+// console.log('gRPC client created <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<', olapClient);
 
 module.exports = {
   olapClient,
