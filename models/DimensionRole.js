@@ -35,6 +35,9 @@ const DimensionRole = sequelize_conn.define('DimensionRole', {
   },
   dimensionGid: {
     type: DataTypes.BIGINT.UNSIGNED
+  },
+  measureFlag: {
+    type: DataTypes.BIGINT.UNSIGNED
   }
 }, {
   tableName: 'dimension_role',  // 指定数据库中的表名
