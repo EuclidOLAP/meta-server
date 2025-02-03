@@ -153,7 +153,8 @@ router.post('/cube', async (req, res) => {
         hierarchyGid: default_hierarchy.gid,
         levelGid: root_level.gid,
         level: root_level.level,
-        parentGid: root_member.gid
+        parentGid: root_member.gid,
+        measureIndex: measures.indexOf(measure_str)
       }, { transaction });
     }
 
@@ -172,7 +173,8 @@ router.post('/cube', async (req, res) => {
     let _measureDimensionRole = await DimensionRole.create({
       name: 'Measures',
       dimensionGid: dimension.gid,
-      cubeGid: cube.gid
+      cubeGid: cube.gid,
+      measureFlag: 1 // It is a meaure dimension role.
     }, { transaction });
 
     // 提交事务
