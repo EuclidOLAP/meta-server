@@ -130,7 +130,8 @@ function getDimensionRolesByCubeGid(call, callback) {
             gid: role.gid,
             name: role.name,
             cubeGid: role.cubeGid,
-            dimensionGid: role.dimensionGid
+            dimensionGid: role.dimensionGid,
+            measureFlag: role.measureFlag,
           }))
         };
         callback(null, response);
@@ -207,6 +208,7 @@ function GetDimensionRoleByGid(call, callback) {
         description: dimensionRole.description,
         cubeGid: dimensionRole.cubeGid,
         dimensionGid: dimensionRole.dimensionGid,
+        measureFlag: dimensionRole.measureFlag,
       };
       callback(null, response);  // 返回查询到的数据
     } else {
@@ -244,6 +246,7 @@ function GetDimensionRoleByName(call, callback) {
         description: dimensionRole.description,
         cubeGid: dimensionRole.cubeGid,
         dimensionGid: dimensionRole.dimensionGid,
+        measureFlag: dimensionRole.measureFlag,
       };
       callback(null, response);  // 返回查询到的数据
     } else {
