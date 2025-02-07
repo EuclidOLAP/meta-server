@@ -94,7 +94,8 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
       hierarchyGid: default_hierarchy.gid,
       levelGid: root_level.gid,
       level: 0,
-      parentGid: 0 // Root Member 没有父节点
+      parentGid: 0, // Root Member 没有父节点
+      leaf: false,
     }, { transaction });
 
     // 更新 Dimension 的 defaultHierarchyGid 字段
@@ -154,7 +155,8 @@ router.post('/cube', async (req, res) => {
         levelGid: root_level.gid,
         level: root_level.level,
         parentGid: root_member.gid,
-        measureIndex: measures.indexOf(measure_str)
+        measureIndex: measures.indexOf(measure_str),
+        leaf: true,
       }, { transaction });
     }
 
@@ -281,8 +283,11 @@ const createChildMember = async (parent, childMemberName, transaction) => {
     hierarchyGid: parent.hierarchyGid,
     levelGid: childMemberLevel.gid,
     level: childMemberLevel.level,
-    parentGid: parent.gid
+    parentGid: parent.gid,
+    leaf: true,
   }, { transaction });
+
+  await parent.update({ leaf: false }, { transaction });
 
   return child;
 };
