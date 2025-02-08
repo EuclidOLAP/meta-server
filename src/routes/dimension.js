@@ -32,6 +32,50 @@ router.get('/cubes', async (req, res) => {
   }
 });
 
+// 获取指定 Cube 的容量信息
+router.get('/cube/:gid/capacity', async (req, res) => {
+  const cubeGid = req.params.gid;
+
+  try {
+    // 查询cube关联的全部DimensionRoles（不包括Measure DimensionRole）
+    let dimensionRoles = await DimensionRole.findAll();
+    dimensionRoles = dimensionRoles.filter(dr => {
+      dr = dr.dataValues;
+      return parseInt(cubeGid) === dr.cubeGid && dr.measureFlag === 0;
+    });
+    // 遍历DimensionRoles，查询其对应的Default Hierarchy
+    let totalProduct = BigInt(1);
+
+    for (let dr of dimensionRoles) {
+      dr = dr.dataValues;
+
+      let dimension = await Dimension.findByPk(dr.dimensionGid);
+      dimension = dimension.dataValues;
+
+      const hierarchy = await Hierarchy.findByPk(dimension.defaultHierarchyGid);
+      // 查询Hierarchy下全部leaf Member的数量
+      const count = await Member.count({
+        where: {
+          hierarchyGid: hierarchy.dataValues.gid,
+          leaf: true
+        }
+      });
+
+      // 将全部leaf Member的数量相乘，得出结果
+      totalProduct *= BigInt(count);
+    }
+
+    res.json({
+      success: true,
+      capacity: totalProduct.toString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching cube capacity:', error);
+    res.status(500).json({ success: false, message: 'Error fetching cube capacity', error });
+  }
+});
+
 router.get('/dimensionRoles', async (req, res) => {
   try {
     const dimensionRoles = await DimensionRole.findAll(); // 查询所有维度
@@ -102,8 +146,8 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
     await dimension.update({ defaultHierarchyGid: default_hierarchy.gid }, { transaction });
 
     if (membersTree && membersTree.length > 0) {
-        asyncLocalStorage.enterWith(context);
-        await createMembersTree(root_member, membersTree, transaction);
+      asyncLocalStorage.enterWith(context);
+      await createMembersTree(root_member, membersTree, transaction);
     }
 
     return {
