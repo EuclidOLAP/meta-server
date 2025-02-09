@@ -333,6 +333,27 @@ const createChildMember = async (parent, childMemberName, transaction) => {
 
   await parent.update({ leaf: false }, { transaction });
 
+  // 判断父节点是否是 root member
+  if (parent.level === 0) {
+    // 如果父节点是 root member，直接更新 child 的 fullPath 字段为其 gid
+    const fullPathBuffer = Buffer.alloc(8);  // 创建一个 8 字节的 buffer
+    fullPathBuffer.writeBigUInt64LE(BigInt(child.gid), 0);  // 将 gid 转换成 8 字节无符号整数
+    await child.update({ fullPath: fullPathBuffer }, { transaction });
+  } else {
+    // 如果父节点不是 root member，拼接 parent 的 fullPath 和 child 的 gid
+    const parentFullPath = parent.fullPath || Buffer.alloc(0);  // 获取父节点的 fullPath，默认为空
+    const childFullPathBuffer = Buffer.alloc(parentFullPath.length + 8);  // 创建一个新的 buffer，长度为父节点 fullPath 长度 + 8 字节
+    parentFullPath.copy(childFullPathBuffer, 0);  // 将父节点的 fullPath 复制到新的 buffer 中
+    childFullPathBuffer.writeBigUInt64LE(BigInt(child.gid), parentFullPath.length);  // 将 child 的 gid 写入 buffer 的后 8 字节
+
+    // 检查是否超出最大字节数
+    if (childFullPathBuffer.length > 460) {
+      throw new Error("Full path exceeds the maximum allowed size of 460 bytes.");
+    }
+
+    await child.update({ fullPath: childFullPathBuffer }, { transaction });  // 更新子节点的 fullPath
+  }
+
   return child;
 };
 
