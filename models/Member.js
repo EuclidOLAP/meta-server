@@ -44,6 +44,9 @@ const Member = sequelize_conn.define('Member', {
   },
   parentGid: {
     type: DataTypes.BIGINT.UNSIGNED
+  },
+  measureIndex: {
+    type: DataTypes.INTEGER.UNSIGNED
   }
 }, {
   tableName: 'member',  // 指定数据库中的表名

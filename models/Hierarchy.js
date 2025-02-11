@@ -32,6 +32,9 @@ const Hierarchy = sequelize_conn.define('Hierarchy', {
   },
   dimensionGid: {
     type: DataTypes.BIGINT.UNSIGNED
+  },
+  defaultMemberGid: {
+    type: DataTypes.BIGINT.UNSIGNED
   }
 }, {
   tableName: 'hierarchy',  // 指定数据库中的表名

@@ -11,7 +11,7 @@ const DB_DIALECT ='mysql';
 const sequelize_conn = new Sequelize(DB_NAME, DB_USER, DB_PASSWORD, {
   host: DB_HOST,
   dialect: DB_DIALECT,
-  logging: (sqlstr) => console.log(`\nSQL >>>>>>\n${sqlstr}\n<<<<<< sql ending >>>>>>`)
+  // logging: (sqlstr) => console.log(`\nSQL >>>>>>\n${sqlstr}\n<<<<<< sql ending >>>>>>`)
 });
 
 // 导出 sequelize_conn 实例

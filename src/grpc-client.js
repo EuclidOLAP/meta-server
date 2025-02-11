@@ -17,7 +17,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 // 加载 gRPC 服务定义
 const olapProto = grpc.loadPackageDefinition(packageDefinition).euclidolap;
 
-console.log('Loaded proto >>>>>>>>>>>>>>>>>>>:::::::::::::', olapProto);
+// console.log('Loaded proto >>>>>>>>>>>>>>>>>>>:::::::::::::', olapProto);
 
 module.exports = {
     olapProto,
