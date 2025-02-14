@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
 const { AsyncLocalStorage } = require('async_hooks');
 const asyncLocalStorage = new AsyncLocalStorage();
 
@@ -73,6 +75,241 @@ router.get('/cube/:gid/capacity', async (req, res) => {
   } catch (error) {
     console.error('Error fetching cube capacity:', error);
     res.status(500).json({ success: false, message: 'Error fetching cube capacity', error });
+  }
+});
+
+// 根据 Cube GID 和 预期度量记录数量生成 Cube 度量数据
+router.post('/cube/:gid/generate-measures', async (req, res) => {
+  const cubeGid = parseInt(req.params.gid);
+  const { expectedMeasureRecords } = req.body;
+
+  class OlapVectorGenerator {
+
+    constructor(expectedMeasureRecords) {
+      this.expectedMeasureRecords = expectedMeasureRecords;
+      this.leaf_members_matrix = [];
+      this.range_counters = [];
+    }
+
+    push(leaf_members) {
+      this.leaf_members_matrix.push(leaf_members);
+      this.range_counters.push(0);
+    }
+
+    next() {
+      if (this.expectedMeasureRecords === 0)
+        return null;
+
+      const vector_pos = [];
+
+      for (let i = 0; i < this.range_counters.length; i++) {
+      // for (const i of this.range_counters) {
+        vector_pos.push(this.leaf_members_matrix[i][ this.range_counters[i] ]);
+      }
+
+      // console.log("OOOO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      for (let j = 0; j < this.range_counters.length; j++) {
+      // for (const j of this.range_counters) {
+        const i = this.range_counters.length - (j + 1);
+        // console.log(`${i} = ${this.range_counters.length} - (${j} + 1)`);
+
+// console.log(`###### i = ${i}, this.range_counters.length = ${this.range_counters.length}, this.leaf_members_matrix.length = ${this.leaf_members_matrix.length}`);
+
+        if (this.range_counters[i] < this.leaf_members_matrix[i].length - 1) {
+          this.range_counters[i]++;
+          break;
+        }
+        this.range_counters[i] = 0;
+      }
+      // console.log("OOOO ?????????????????????????????????????????????????????????????????????????????????");
+
+      this.expectedMeasureRecords--;
+      return vector_pos;
+    }
+  }
+
+  const do_generate_measures = async (cubeGid, expectedMeasureRecords) => {
+    // 根据cube gid取出全部非度量维度角色，对应到维度，对应到层级结构
+    // let cube = await Cube.findByPk(cubeGid);
+    // cube = cube.dataValues;
+
+    // 创建一个定位器
+    const ovg = new OlapVectorGenerator(expectedMeasureRecords);
+
+    let dimensionRoles = await DimensionRole.findAll({
+      where: {
+        cubeGid: cubeGid,
+        measureFlag: 0 // 非度量维度角色
+      }
+    });
+    dimensionRoles = dimensionRoles.map(dr => dr.dataValues);
+    // 按 gid 升序排序
+    dimensionRoles.sort((a, b) => a.gid - b.gid);
+
+    // 查询层级结构对应的全部leaf Members，按gid升序排列
+    for (const dr of dimensionRoles) {
+      const dimension = await Dimension.findByPk(dr.dimensionGid);
+      const hierarchy_gid = dimension.defaultHierarchyGid;
+      let leaf_members = await Member.findAll({
+        where: {
+          hierarchyGid: hierarchy_gid,
+          leaf: true
+        },
+        order: [
+          ['gid', 'ASC']
+        ]
+      });
+      leaf_members = leaf_members.map(m => m.dataValues);
+      ovg.push(leaf_members);
+    }
+
+    let measure_dim_role = await DimensionRole.findOne({
+      where: {
+        cubeGid: cubeGid,
+        measureFlag: 1
+      }
+    });
+    measure_dim_role = measure_dim_role.dataValues;
+    let measure_members = await Member.findAll({
+      where: {
+        dimensionGid: measure_dim_role.dimensionGid,
+        leaf: true
+      },
+      order: [
+        ['gid', 'ASC']
+      ]
+    });
+    measure_members = measure_members.map(m => m.dataValues);
+
+    // const filePath = path.join(__dirname, `vce-input/vce-input-cube-gid-${cubeGid}`);
+    // await fs.access(filePath)
+    //   .then(async () => {
+    //     await fs.unlink(filePath); // 删除文件
+    //   })
+    //   .catch((err) => {
+    //     // 文件不存在，跳过删除
+    //     if (err.code !== 'ENOENT') throw err;
+    //   });
+    const vce_inputs_dir = path.join(process.cwd(), 'vce-inputs');
+
+    try {
+        // 尝试访问目录
+        await fs.access(vce_inputs_dir);
+        console.log('目录已存在:', vce_inputs_dir);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            // 如果目录不存在，则创建它
+            await fs.mkdir(vce_inputs_dir);
+            console.log('目录已创建:', vce_inputs_dir);
+        } else {
+            // 处理其他错误
+            console.error('检查或创建目录时出错:', error);
+        }
+    }
+
+    const cube_vce_input_file = path.join(vce_inputs_dir, `${cubeGid}`);
+    try {
+        // 尝试访问文件
+        await fs.access(cube_vce_input_file);
+        // 如果文件存在，删除它
+        await fs.unlink(cube_vce_input_file);
+        console.log('文件已删除:', cube_vce_input_file);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.log('文件不存在:', cube_vce_input_file);
+        } else {
+            // 处理其他错误
+            console.error('检查或删除文件时出错:', error);
+        }
+    }
+
+    // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
+    const header_buffer = Buffer.alloc(4 + 2 + 4 + 4 + 8 + 4 + 4);
+    header_buffer.writeUInt32LE(0, 0); // 4 bytes - data package capacity
+    header_buffer.writeUInt16LE(4, 4); // 2 bytes - intention // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
+
+    header_buffer.writeUInt32LE(0, 6); // N bytes - N = sizeof(InsertingMeasuresOptions)
+    header_buffer.writeUInt32LE(8001111, 10); // N bytes - N = sizeof(InsertingMeasuresOptions)
+
+    header_buffer.writeBigUInt64LE(BigInt(cubeGid), 14); // 8 bytes - cube g_id
+    header_buffer.writeUInt32LE(dimensionRoles.length, 22); // 4 bytes - {DimRoles amount}
+    header_buffer.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
+
+    // 写入到文件
+    await fs.appendFile(cube_vce_input_file, header_buffer);
+
+    while (true) {
+      const vector_pos = ovg.next();
+      if (vector_pos === null)
+        break;
+
+      // 定义一个Buffer，用于存储二进制数据
+      let vector_buffer = Buffer.alloc(0);
+
+      for (const member of vector_pos) {
+        const bin_full_path = member.fullPath;
+        const level = member.level;
+
+        // level是一个int，将其拼接到Buffer中，占4个字节
+        const levelBuffer = Buffer.alloc(4);
+        levelBuffer.writeInt32LE(level, 0);
+        // bin_full_path是一个Buffer，将其存拼接到Buffer中，占bin_full_path.length个字节
+        vector_buffer = Buffer.concat([vector_buffer, levelBuffer, bin_full_path]);
+      }
+
+      for (const mm of measure_members) {
+        const mm_name = mm.name;
+        let measureBuffer = Buffer.alloc(8);
+        if (mm_name === "Count") {
+          // 往vector_buffer后拼接一个8字节浮点数，值为1
+          measureBuffer.writeDoubleLE(1.0, 0);  // 写入8字节浮点数1
+        } else {
+          // 往vector_buffer后拼接一个8字节随机浮点数
+          measureBuffer.writeDoubleLE(10 + Math.random() * 100, 0);  // 写入8字节浮点数
+        }
+        // 往vector_buffer后拼接一个1字节整形，值为0
+        const null_flag_buff = Buffer.alloc(1);
+        null_flag_buff.writeUInt8(0, 0);
+
+        // 拼接到vector_buffer中
+        vector_buffer = Buffer.concat([vector_buffer, measureBuffer, null_flag_buff]);
+      }
+
+      try {
+          await fs.appendFile(cube_vce_input_file, vector_buffer);
+      } catch (error) {
+          console.error('写入文件时出错:', error);
+      }
+
+    }
+
+    /**
+     * TODO 
+     * 将文件cube_vce_input_file的容量是多少字节数写入到此文件的前四个字节
+     */
+    // 获取文件大小
+    const fileStats = await fs.stat(cube_vce_input_file);
+    const fileSize = fileStats.size;
+
+    // 打开文件并将总字节数写入文件的前四个字节
+    const fileBuffer = await fs.readFile(cube_vce_input_file);
+    fileBuffer.writeUInt32LE(fileSize, 0);
+
+    // 将修改后的字节数据回写到文件
+    await fs.writeFile(cube_vce_input_file, fileBuffer);
+
+    // console.log("Data generation completed and file size updated.");
+
+    // console.log("oooooooooooooooooooooooooooooooKKKKKKKKKKKKKKKKKKKKKKKOOOOOOOOOOOOOOOOOOOOOOOOO");
+  };
+
+  try {
+    do_generate_measures(cubeGid, expectedMeasureRecords);
+    
+    res.json({ success: true, message: 'Measures data are doing generated.' });
+  } catch (error) {
+    console.error('Error generating measure data:', error);
+    res.status(500).json({ success: false, message: 'Error generating measure data', error });
   }
 });
 
