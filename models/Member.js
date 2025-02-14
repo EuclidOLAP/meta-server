@@ -47,7 +47,16 @@ const Member = sequelize_conn.define('Member', {
   },
   measureIndex: {
     type: DataTypes.INTEGER.UNSIGNED
-  }
+  },
+  leaf: {
+    type: DataTypes.BOOLEAN,
+    // allowNull: false,
+    defaultValue: true
+  },
+  fullPath: {
+    type: DataTypes.BLOB('tiny'),
+    allowNull: true,
+  },
 }, {
   tableName: 'member',  // 指定数据库中的表名
   freezeTableName: true, // 禁用 Sequelize 自动管理表结构

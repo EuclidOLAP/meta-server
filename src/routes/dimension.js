@@ -32,6 +32,50 @@ router.get('/cubes', async (req, res) => {
   }
 });
 
+// 获取指定 Cube 的容量信息
+router.get('/cube/:gid/capacity', async (req, res) => {
+  const cubeGid = req.params.gid;
+
+  try {
+    // 查询cube关联的全部DimensionRoles（不包括Measure DimensionRole）
+    let dimensionRoles = await DimensionRole.findAll();
+    dimensionRoles = dimensionRoles.filter(dr => {
+      dr = dr.dataValues;
+      return parseInt(cubeGid) === dr.cubeGid && dr.measureFlag === 0;
+    });
+    // 遍历DimensionRoles，查询其对应的Default Hierarchy
+    let totalProduct = BigInt(1);
+
+    for (let dr of dimensionRoles) {
+      dr = dr.dataValues;
+
+      let dimension = await Dimension.findByPk(dr.dimensionGid);
+      dimension = dimension.dataValues;
+
+      const hierarchy = await Hierarchy.findByPk(dimension.defaultHierarchyGid);
+      // 查询Hierarchy下全部leaf Member的数量
+      const count = await Member.count({
+        where: {
+          hierarchyGid: hierarchy.dataValues.gid,
+          leaf: true
+        }
+      });
+
+      // 将全部leaf Member的数量相乘，得出结果
+      totalProduct *= BigInt(count);
+    }
+
+    res.json({
+      success: true,
+      capacity: totalProduct.toString()
+    });
+
+  } catch (error) {
+    console.error('Error fetching cube capacity:', error);
+    res.status(500).json({ success: false, message: 'Error fetching cube capacity', error });
+  }
+});
+
 router.get('/dimensionRoles', async (req, res) => {
   try {
     const dimensionRoles = await DimensionRole.findAll(); // 查询所有维度
@@ -94,15 +138,16 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
       hierarchyGid: default_hierarchy.gid,
       levelGid: root_level.gid,
       level: 0,
-      parentGid: 0 // Root Member 没有父节点
+      parentGid: 0, // Root Member 没有父节点
+      leaf: false,
     }, { transaction });
 
     // 更新 Dimension 的 defaultHierarchyGid 字段
     await dimension.update({ defaultHierarchyGid: default_hierarchy.gid }, { transaction });
 
     if (membersTree && membersTree.length > 0) {
-        asyncLocalStorage.enterWith(context);
-        await createMembersTree(root_member, membersTree, transaction);
+      asyncLocalStorage.enterWith(context);
+      await createMembersTree(root_member, membersTree, transaction);
     }
 
     return {
@@ -154,7 +199,8 @@ router.post('/cube', async (req, res) => {
         levelGid: root_level.gid,
         level: root_level.level,
         parentGid: root_member.gid,
-        measureIndex: measures.indexOf(measure_str)
+        measureIndex: measures.indexOf(measure_str),
+        leaf: true,
       }, { transaction });
     }
 
@@ -281,8 +327,32 @@ const createChildMember = async (parent, childMemberName, transaction) => {
     hierarchyGid: parent.hierarchyGid,
     levelGid: childMemberLevel.gid,
     level: childMemberLevel.level,
-    parentGid: parent.gid
+    parentGid: parent.gid,
+    leaf: true,
   }, { transaction });
+
+  await parent.update({ leaf: false }, { transaction });
+
+  // 判断父节点是否是 root member
+  if (parent.level === 0) {
+    // 如果父节点是 root member，直接更新 child 的 fullPath 字段为其 gid
+    const fullPathBuffer = Buffer.alloc(8);  // 创建一个 8 字节的 buffer
+    fullPathBuffer.writeBigUInt64LE(BigInt(child.gid), 0);  // 将 gid 转换成 8 字节无符号整数
+    await child.update({ fullPath: fullPathBuffer }, { transaction });
+  } else {
+    // 如果父节点不是 root member，拼接 parent 的 fullPath 和 child 的 gid
+    const parentFullPath = parent.fullPath || Buffer.alloc(0);  // 获取父节点的 fullPath，默认为空
+    const childFullPathBuffer = Buffer.alloc(parentFullPath.length + 8);  // 创建一个新的 buffer，长度为父节点 fullPath 长度 + 8 字节
+    parentFullPath.copy(childFullPathBuffer, 0);  // 将父节点的 fullPath 复制到新的 buffer 中
+    childFullPathBuffer.writeBigUInt64LE(BigInt(child.gid), parentFullPath.length);  // 将 child 的 gid 写入 buffer 的后 8 字节
+
+    // 检查是否超出最大字节数
+    if (childFullPathBuffer.length > 460) {
+      throw new Error("Full path exceeds the maximum allowed size of 460 bytes.");
+    }
+
+    await child.update({ fullPath: childFullPathBuffer }, { transaction });  // 更新子节点的 fullPath
+  }
 
   return child;
 };
