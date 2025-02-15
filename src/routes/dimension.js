@@ -103,25 +103,17 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
       const vector_pos = [];
 
       for (let i = 0; i < this.range_counters.length; i++) {
-      // for (const i of this.range_counters) {
-        vector_pos.push(this.leaf_members_matrix[i][ this.range_counters[i] ]);
+        vector_pos.push(this.leaf_members_matrix[i][this.range_counters[i]]);
       }
 
-      // console.log("OOOO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       for (let j = 0; j < this.range_counters.length; j++) {
-      // for (const j of this.range_counters) {
         const i = this.range_counters.length - (j + 1);
-        // console.log(`${i} = ${this.range_counters.length} - (${j} + 1)`);
-
-// console.log(`###### i = ${i}, this.range_counters.length = ${this.range_counters.length}, this.leaf_members_matrix.length = ${this.leaf_members_matrix.length}`);
-
         if (this.range_counters[i] < this.leaf_members_matrix[i].length - 1) {
           this.range_counters[i]++;
           break;
         }
         this.range_counters[i] = 0;
       }
-      // console.log("OOOO ?????????????????????????????????????????????????????????????????????????????????");
 
       this.expectedMeasureRecords--;
       return vector_pos;
@@ -181,46 +173,37 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
     });
     measure_members = measure_members.map(m => m.dataValues);
 
-    // const filePath = path.join(__dirname, `vce-input/vce-input-cube-gid-${cubeGid}`);
-    // await fs.access(filePath)
-    //   .then(async () => {
-    //     await fs.unlink(filePath); // 删除文件
-    //   })
-    //   .catch((err) => {
-    //     // 文件不存在，跳过删除
-    //     if (err.code !== 'ENOENT') throw err;
-    //   });
     const vce_inputs_dir = path.join(process.cwd(), 'vce-inputs');
 
     try {
-        // 尝试访问目录
-        await fs.access(vce_inputs_dir);
-        console.log('目录已存在:', vce_inputs_dir);
+      // 尝试访问目录
+      await fs.access(vce_inputs_dir);
+      console.log('目录已存在:', vce_inputs_dir);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            // 如果目录不存在，则创建它
-            await fs.mkdir(vce_inputs_dir);
-            console.log('目录已创建:', vce_inputs_dir);
-        } else {
-            // 处理其他错误
-            console.error('检查或创建目录时出错:', error);
-        }
+      if (error.code === 'ENOENT') {
+        // 如果目录不存在，则创建它
+        await fs.mkdir(vce_inputs_dir);
+        console.log('目录已创建:', vce_inputs_dir);
+      } else {
+        // 处理其他错误
+        console.error('检查或创建目录时出错:', error);
+      }
     }
 
     const cube_vce_input_file = path.join(vce_inputs_dir, `${cubeGid}`);
     try {
-        // 尝试访问文件
-        await fs.access(cube_vce_input_file);
-        // 如果文件存在，删除它
-        await fs.unlink(cube_vce_input_file);
-        console.log('文件已删除:', cube_vce_input_file);
+      // 尝试访问文件
+      await fs.access(cube_vce_input_file);
+      // 如果文件存在，删除它
+      await fs.unlink(cube_vce_input_file);
+      console.log('文件已删除:', cube_vce_input_file);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            console.log('文件不存在:', cube_vce_input_file);
-        } else {
-            // 处理其他错误
-            console.error('检查或删除文件时出错:', error);
-        }
+      if (error.code === 'ENOENT') {
+        console.log('文件不存在:', cube_vce_input_file);
+      } else {
+        // 处理其他错误
+        console.error('检查或删除文件时出错:', error);
+      }
     }
 
     // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
@@ -276,9 +259,9 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
       }
 
       try {
-          await fs.appendFile(cube_vce_input_file, vector_buffer);
+        await fs.appendFile(cube_vce_input_file, vector_buffer);
       } catch (error) {
-          console.error('写入文件时出错:', error);
+        console.error('写入文件时出错:', error);
       }
 
     }
@@ -296,15 +279,11 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
 
     // 将修改后的字节数据回写到文件
     await fs.writeFile(cube_vce_input_file, fileBuffer);
-
-    // console.log("Data generation completed and file size updated.");
-
-    // console.log("oooooooooooooooooooooooooooooooKKKKKKKKKKKKKKKKKKKKKKKOOOOOOOOOOOOOOOOOOOOOOOOO");
   };
 
   try {
     do_generate_measures(cubeGid, expectedMeasureRecords);
-    
+
     res.json({ success: true, message: 'Measures data are doing generated.' });
   } catch (error) {
     console.error('Error generating measure data:', error);
@@ -330,7 +309,6 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
    * 当一个Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
    * 然后更新Dimension的defaultHierarchyGid
    */
-
   try {
     // Dimension：name, type, default_hierarchy_gid
     const dimension = await Dimension.create({ name, type }, { transaction });
@@ -396,7 +374,6 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
     console.error(error.message);
     return null;
   }
-
 };
 
 const createMembersTree = async (parent, children_fragments, transaction) => {
@@ -478,7 +455,6 @@ router.post('/dimension', async (req, res) => {
    * 当一个非度量Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
    * 然后更新Dimension的defaultHierarchyGid
    */
-
   const { name, defaultHierarchyName, levels, membersTree } = req.body;
 
   const transaction = await sequelize_conn.transaction();
@@ -503,7 +479,6 @@ router.post('/dimension', async (req, res) => {
   }
 
 });
-
 
 // 获取指定维度的成员树结构
 router.get('/dimension/:gid/members', async (req, res) => {
@@ -656,6 +631,5 @@ router.get('/hierarchy/:gid/members', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching members', error });
   }
 });
-
 
 module.exports = router;
