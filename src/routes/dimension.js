@@ -284,7 +284,6 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
     }
 
     /**
-     * TODO 
      * 将文件cube_vce_input_file的容量是多少字节数写入到此文件的前四个字节
      */
     // 获取文件大小
