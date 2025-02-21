@@ -103,25 +103,17 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
       const vector_pos = [];
 
       for (let i = 0; i < this.range_counters.length; i++) {
-      // for (const i of this.range_counters) {
-        vector_pos.push(this.leaf_members_matrix[i][ this.range_counters[i] ]);
+        vector_pos.push(this.leaf_members_matrix[i][this.range_counters[i]]);
       }
 
-      // console.log("OOOO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       for (let j = 0; j < this.range_counters.length; j++) {
-      // for (const j of this.range_counters) {
         const i = this.range_counters.length - (j + 1);
-        // console.log(`${i} = ${this.range_counters.length} - (${j} + 1)`);
-
-// console.log(`###### i = ${i}, this.range_counters.length = ${this.range_counters.length}, this.leaf_members_matrix.length = ${this.leaf_members_matrix.length}`);
-
         if (this.range_counters[i] < this.leaf_members_matrix[i].length - 1) {
           this.range_counters[i]++;
           break;
         }
         this.range_counters[i] = 0;
       }
-      // console.log("OOOO ?????????????????????????????????????????????????????????????????????????????????");
 
       this.expectedMeasureRecords--;
       return vector_pos;
@@ -181,70 +173,72 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
     });
     measure_members = measure_members.map(m => m.dataValues);
 
-    // const filePath = path.join(__dirname, `vce-input/vce-input-cube-gid-${cubeGid}`);
-    // await fs.access(filePath)
-    //   .then(async () => {
-    //     await fs.unlink(filePath); // 删除文件
-    //   })
-    //   .catch((err) => {
-    //     // 文件不存在，跳过删除
-    //     if (err.code !== 'ENOENT') throw err;
-    //   });
     const vce_inputs_dir = path.join(process.cwd(), 'vce-inputs');
 
     try {
-        // 尝试访问目录
-        await fs.access(vce_inputs_dir);
-        console.log('目录已存在:', vce_inputs_dir);
+      // 尝试访问目录
+      await fs.access(vce_inputs_dir);
+      console.log('目录已存在:', vce_inputs_dir);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            // 如果目录不存在，则创建它
-            await fs.mkdir(vce_inputs_dir);
-            console.log('目录已创建:', vce_inputs_dir);
-        } else {
-            // 处理其他错误
-            console.error('检查或创建目录时出错:', error);
-        }
+      if (error.code === 'ENOENT') {
+        // 如果目录不存在，则创建它
+        await fs.mkdir(vce_inputs_dir);
+        console.log('目录已创建:', vce_inputs_dir);
+      } else {
+        // 处理其他错误
+        console.error('检查或创建目录时出错:', error);
+      }
     }
 
-    const cube_vce_input_file = path.join(vce_inputs_dir, `${cubeGid}`);
-    try {
-        // 尝试访问文件
-        await fs.access(cube_vce_input_file);
-        // 如果文件存在，删除它
-        await fs.unlink(cube_vce_input_file);
-        console.log('文件已删除:', cube_vce_input_file);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            console.log('文件不存在:', cube_vce_input_file);
-        } else {
-            // 处理其他错误
-            console.error('检查或删除文件时出错:', error);
-        }
+    /**
+     * 判断vce_inputs_dir目录下是否存在以cubeGid为前缀名称的文件，
+     * 如果不存在，继续执行后续逻辑
+     * 如果存在，报错并提示文件已存在，应该手动删除文件。
+     */
+    const files = await fs.readdir(vce_inputs_dir);
+    const matchingFiles = files.filter(file => file.startsWith(cubeGid.toString()));
+    if (matchingFiles.length > 0) {
+      throw new Error(`文件已存在，请手动删除以 ${cubeGid} 为前缀的文件后再试。`);
     }
 
+    /**
+     * (euclid node) -> (child node)
+     *
+     * 4 bytes - data package capacity
+     * 2 bytes - intention
+     * N bytes - N = sizeof(InsertingMeasuresOptions), these bytes are a InsertingMeasuresOptions instance.
+     * 8 bytes - cube g_id
+     * 4 bytes - {DimRoles amount} - the number of coordinate axes, which is the number of dimension-roles.
+     * 4 bytes - {MeasureMbrs amount} - the number of measure-dimension members.
+     * (
+     *     (4 bytes + 8 bytes * N) * {DimRoles amount}
+     *         - The coordinate on the axis, which is the full path of the dimension member md_gid. (N > 0)
+     *     (8 + 1 bytes) * {MeasureMbrs amount} - Measures values, and null-flag.
+     * ) * V - 'V' represents the number of vectors inserted at one time. (V > 0)
+     */
     // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
-    const header_buffer = Buffer.alloc(4 + 2 + 4 + 4 + 8 + 4 + 4);
-    header_buffer.writeUInt32LE(0, 0); // 4 bytes - data package capacity
-    header_buffer.writeUInt16LE(4, 4); // 2 bytes - intention // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
+    const intent_buff = Buffer.alloc(4 + 2 + 4 + 4 + 8 + 4 + 4);
+    intent_buff.writeUInt32LE(0, 0); // 4 bytes - data package capacity
+    intent_buff.writeUInt16LE(4, 4); // 2 bytes - intention // #define INTENT__INSERT_CUBE_MEASURE_VALS 4
 
-    header_buffer.writeUInt32LE(0, 6); // N bytes - N = sizeof(InsertingMeasuresOptions)
-    header_buffer.writeUInt32LE(8001111, 10); // N bytes - N = sizeof(InsertingMeasuresOptions)
+    // N bytes - N = sizeof(InsertingMeasuresOptions)
+    // intent_buff.writeUInt32LE(0, 6); // ReloadMeasures_Enable, // default
+    intent_buff.writeUInt32LE(1, 6); // ReloadMeasures_Disable
+    intent_buff.writeUInt32LE(0, 10); // int worker_id
 
-    header_buffer.writeBigUInt64LE(BigInt(cubeGid), 14); // 8 bytes - cube g_id
-    header_buffer.writeUInt32LE(dimensionRoles.length, 22); // 4 bytes - {DimRoles amount}
-    header_buffer.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
+    intent_buff.writeBigUInt64LE(BigInt(cubeGid), 14); // 8 bytes - cube g_id
+    intent_buff.writeUInt32LE(dimensionRoles.length, 22); // 4 bytes - {DimRoles amount}
+    intent_buff.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
 
-    // 写入到文件
-    await fs.appendFile(cube_vce_input_file, header_buffer);
+    // 创建一个Buffer对象————intent_body_buff，其初始内存大小为2M
+    let intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
+    let buff_num = 0;
+    let currentOffset = 0;
 
     while (true) {
       const vector_pos = ovg.next();
       if (vector_pos === null)
         break;
-
-      // 定义一个Buffer，用于存储二进制数据
-      let vector_buffer = Buffer.alloc(0);
 
       for (const member of vector_pos) {
         const bin_full_path = member.fullPath;
@@ -253,8 +247,12 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
         // level是一个int，将其拼接到Buffer中，占4个字节
         const levelBuffer = Buffer.alloc(4);
         levelBuffer.writeInt32LE(level, 0);
-        // bin_full_path是一个Buffer，将其存拼接到Buffer中，占bin_full_path.length个字节
-        vector_buffer = Buffer.concat([vector_buffer, levelBuffer, bin_full_path]);
+        // 将levelBuffer拼接到intent_body_buff后面
+        levelBuffer.copy(intent_body_buff, currentOffset);
+        currentOffset += levelBuffer.length;
+        // 将bin_full_path拼接到intent_body_buff后面
+        bin_full_path.copy(intent_body_buff, currentOffset);
+        currentOffset += bin_full_path.length;
       }
 
       for (const mm of measure_members) {
@@ -271,41 +269,53 @@ router.post('/cube/:gid/generate-measures', async (req, res) => {
         const null_flag_buff = Buffer.alloc(1);
         null_flag_buff.writeUInt8(0, 0);
 
-        // 拼接到vector_buffer中
-        vector_buffer = Buffer.concat([vector_buffer, measureBuffer, null_flag_buff]);
+        // 将measureBuffer拼接到intent_body_buff后面
+        measureBuffer.copy(intent_body_buff, currentOffset);
+        currentOffset += measureBuffer.length;
+        // 将null_flag_buff拼接到intent_body_buff后面
+        null_flag_buff.copy(intent_body_buff, currentOffset);
+        currentOffset += null_flag_buff.length;
       }
 
-      try {
-          await fs.appendFile(cube_vce_input_file, vector_buffer);
-      } catch (error) {
-          console.error('写入文件时出错:', error);
-      }
+      /**
+       * 如果 intent_body_buff 中的有效字节数超过1M，执行下面的逻辑：
+       * 将 intent_buff 和 intent_body_buff 合并成一个新的Buffer，
+       * 然后将 intent_buff 和 intent_body_buff 的总字节数写入到新的Buffer的前四个字节中（覆盖）。
+       * 将新的Buffer写入到文件中（文件名为 ${cubeGid}-${buff_num} ）。
+       * buff_num++
+       * 将 intent_body_buff 清空
+       */
+      if (currentOffset > 1024 * 1024) {
+        const combinedBuffer = Buffer.concat([intent_buff, intent_body_buff.slice(0, currentOffset)]);
+        combinedBuffer.writeUInt32LE(combinedBuffer.length, 0);
 
+        const filePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+        await fs.writeFile(filePath, combinedBuffer);
+
+console.log(`>>>>>>>>> ${filePath}`);
+
+        buff_num++;
+        intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
+        currentOffset = 0;
+      }
     }
 
     /**
-     * TODO 
-     * 将文件cube_vce_input_file的容量是多少字节数写入到此文件的前四个字节
+     * 将 intent_buff 和 intent_body_buff 合并成一个新的Buffer，
+     * 然后将 intent_buff 和 intent_body_buff 的总字节数写入到新的Buffer的前四个字节中（覆盖）。
+     * 将新的Buffer写入到文件中（文件名为 ${cubeGid}-${buff_num} ）。
      */
-    // 获取文件大小
-    const fileStats = await fs.stat(cube_vce_input_file);
-    const fileSize = fileStats.size;
+    const finalCombinedBuffer = Buffer.concat([intent_buff, intent_body_buff.slice(0, currentOffset)]);
+    finalCombinedBuffer.writeUInt32LE(finalCombinedBuffer.length, 0);
 
-    // 打开文件并将总字节数写入文件的前四个字节
-    const fileBuffer = await fs.readFile(cube_vce_input_file);
-    fileBuffer.writeUInt32LE(fileSize, 0);
-
-    // 将修改后的字节数据回写到文件
-    await fs.writeFile(cube_vce_input_file, fileBuffer);
-
-    // console.log("Data generation completed and file size updated.");
-
-    // console.log("oooooooooooooooooooooooooooooooKKKKKKKKKKKKKKKKKKKKKKKOOOOOOOOOOOOOOOOOOOOOOOOO");
+    const finalFilePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+    await fs.writeFile(finalFilePath, finalCombinedBuffer);
+console.log(`>>>>>>>>> finalFilePath : ${finalFilePath}`);
   };
 
   try {
     do_generate_measures(cubeGid, expectedMeasureRecords);
-    
+
     res.json({ success: true, message: 'Measures data are doing generated.' });
   } catch (error) {
     console.error('Error generating measure data:', error);
@@ -331,7 +341,6 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
    * 当一个Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
    * 然后更新Dimension的defaultHierarchyGid
    */
-
   try {
     // Dimension：name, type, default_hierarchy_gid
     const dimension = await Dimension.create({ name, type }, { transaction });
@@ -397,7 +406,6 @@ const do_create_dimension = async ({ name, defaultHierarchyName, levels, members
     console.error(error.message);
     return null;
   }
-
 };
 
 const createMembersTree = async (parent, children_fragments, transaction) => {
@@ -479,7 +487,6 @@ router.post('/dimension', async (req, res) => {
    * 当一个非度量Dimension被创建时，同时还要创建：1、默认Hierarchy，2、Root Level，3、Root Member
    * 然后更新Dimension的defaultHierarchyGid
    */
-
   const { name, defaultHierarchyName, levels, membersTree } = req.body;
 
   const transaction = await sequelize_conn.transaction();
@@ -504,7 +511,6 @@ router.post('/dimension', async (req, res) => {
   }
 
 });
-
 
 // 获取指定维度的成员树结构
 router.get('/dimension/:gid/members', async (req, res) => {
@@ -657,6 +663,5 @@ router.get('/hierarchy/:gid/members', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error fetching members', error });
   }
 });
-
 
 module.exports = router;
