@@ -26,17 +26,17 @@ mdq_api_router.post('/mdx', async (request, response) => {
     statement: mdx, // 示例 MDX 查询语句
   };
   // 调用 ExecuteOperation 方法
-  olapClient.ExecuteOperation(requestPayload, (error, response) => {
+  olapClient.ExecuteOperation(requestPayload, (error, grpc_olap_response) => {
     if (error) {
       console.error('Error calling ExecuteOperation:', error);
       return;
     }
 
     // 处理成功的响应
-    console.log('Response from ExecuteOperation:', response);
-  });
+    console.log('Grpc Response from ExecuteOperation:', grpc_olap_response);
 
-  response.status(200).json({ website: 'www.euclidolap.com' });
+    response.status(200).json(grpc_olap_response.vectors);
+  });
 
 });
 
