@@ -14,6 +14,7 @@ const Level = require('../../models/Level');
 const Member = require('../../models/Member');
 const Cube = require('../../models/Cube');
 const DimensionRole = require('../../models/DimensionRole');
+const CalculatedMetric = require('../../models/CalculatedMetric');
 
 // 新增：获取所有维度的接口
 router.get('/dimensions', async (req, res) => {
@@ -661,6 +662,75 @@ router.get('/hierarchy/:gid/members', async (req, res) => {
   } catch (error) {
     console.error('Error fetching members for hierarchy:', error);
     res.status(500).json({ success: false, message: 'Error fetching members', error });
+  }
+});
+
+// POST 请求，创建一个新的 CalculatedMetric 实例
+router.post('/calculated-metrics', async (req, res) => {
+
+  const metric = req.body;
+
+  let level = await Level.findOne({
+    where: {
+      hierarchyGid: metric.hierarchyGid,
+      level: metric.level,
+    }
+  });
+
+  // 如果没有对应Level，则创建Level，所以需要事务
+  const transaction = await sequelize_conn.transaction();
+
+  try {
+
+    if (level === null) {
+      // 如果没有对应Level，则创建Level
+      level = await Level.create({
+        name: `Level-${metric.level}`,
+        dimensionGid: metric.dimensionGid,
+        hierarchyGid: metric.hierarchyGid,
+        level: metric.level,
+      }, { transaction });
+    }
+
+    metric.levelGid = level.gid;
+
+    // 创建新的 CalculatedMetric 实例
+    const new_metric = await CalculatedMetric.create(metric, { transaction });
+
+    // 提交事务
+    await transaction.commit();
+
+    // 返回成功的响应
+    res.status(201).json({
+      success: true,
+      metric: new_metric
+    });
+  } catch (error) {
+    await transaction.rollback(); // 如果出现任何错误，回滚事务
+    console.error('Error creating CalculatedMetric:', error);
+    res.status(500).json({ success: false, message: 'Failed to create CalculatedMetric', error });
+  }
+});
+
+router.get('/calculatedMetrics/cube/:cube_gid', async (req, res) => {
+  const cubeGid = req.params.cube_gid;
+
+  try {
+    const calculatedMetrics = await CalculatedMetric.findAll({
+      where: { cubeGid: cubeGid }
+    });
+
+    res.json({
+      success: true,
+      metrics: calculatedMetrics
+    });
+  } catch (error) {
+    console.error('Error fetching calculated metrics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching calculated metrics',
+      error: error.message
+    });
   }
 });
 
