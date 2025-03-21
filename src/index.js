@@ -286,8 +286,28 @@ async function LocateUniversalOlapEntityByGid(call, callback) {
 }
 
 async function LocateUniversalOlapEntityByName(call, callback) {
+  console.log("// todo LocateUniversalOlapEntityByName .......................................... process.exit ...........");
+  process.exit(0);
   const dim = await Dimension.findByPk(100000000000003);
   let result = { olapEntityClass: "Dimension", ...dim.dataValues };
+  callback(null, result);
+}
+
+async function GetUniversalOlapEntityByGid(call, callback) {
+
+  const { universalOlapEntityGid } = call.request;
+
+  let result = {
+    olapEntityClass: "Nothing............",
+  };
+
+  switch (getOlapEntityTypeByGid(universalOlapEntityGid)) {
+    case OlapEntityType.MEMBER:
+        const member = await Member.findByPk(universalOlapEntityGid);
+        result = { olapEntityClass: "Member", ...member.dataValues };
+        break;
+  }
+
   callback(null, result);
 }
 
@@ -302,6 +322,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetDimensionRoleByName: GetDimensionRoleByName,
   LocateUniversalOlapEntityByGid: LocateUniversalOlapEntityByGid,
   LocateUniversalOlapEntityByName: LocateUniversalOlapEntityByName,
+  GetUniversalOlapEntityByGid: GetUniversalOlapEntityByGid,
 });
 
 // 4. 启动服务端
