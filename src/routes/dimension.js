@@ -722,7 +722,14 @@ router.get('/calculatedMetrics/cube/:cube_gid', async (req, res) => {
 
     res.json({
       success: true,
-      metrics: calculatedMetrics
+      metrics: calculatedMetrics.map(metric => {
+        // ({ olapEntityType: 'CalculatedMetric', ...metric.dataValues })
+        const metricData = metric.dataValues;
+        if (!metricData.display)
+          metricData.display = metricData.name;
+
+        return { olapEntityType: 'CalculatedMetric', ...metricData };
+      })
     });
   } catch (error) {
     console.error('Error fetching calculated metrics:', error);
