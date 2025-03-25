@@ -311,6 +311,33 @@ async function GetUniversalOlapEntityByGid(call, callback) {
   callback(null, result);
 }
 
+async function GetChildMembersByGid(call, callback) {
+
+  let childMembers = await Member.findAll({
+    where: {
+      parentGid: call.request.parentMemberGid,
+    }
+  });
+
+  if (childMembers && childMembers.length > 0) {
+    const response = {
+      childMembers: childMembers.map(member => ({
+        gid: member.gid,
+        name: member.name,
+        dimensionGid: member.dimensionGid,
+        hierarchyGid: member.hierarchyGid,
+        levelGid: member.levelGid,
+        level: member.level,
+        parentGid: member.parentGid,
+      }))
+    };
+    callback(null, response);
+  } else {
+    callback(new Error('No child members found for the given parent member GID'), null);
+  }
+
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -323,6 +350,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   LocateUniversalOlapEntityByGid: LocateUniversalOlapEntityByGid,
   LocateUniversalOlapEntityByName: LocateUniversalOlapEntityByName,
   GetUniversalOlapEntityByGid: GetUniversalOlapEntityByGid,
+  GetChildMembersByGid,
 });
 
 // 4. 启动服务端
