@@ -1,18 +1,3 @@
-// API List:
-// 1.  GET  /dimensions：获取并返回所有维度信息，成功时返回维度数组，失败返回错误信息。
-// 2.  GET  /cubes：获取并返回所有 Cube 信息，成功时返回 Cube 数组，失败返回错误信息。
-// 3.  GET  /cube/:gid/capacity：根据传入的 Cube GID 获取该 Cube 的容量信息，成功返回容量值，失败返回错误信息。
-// 4.  POST /cube/:gid/generate-measures：依据 Cube GID 和请求体中的预期度量记录数量生成 Cube 度量数据，成功返回提示信息，失败返回错误信息。
-// 5.  GET  /dimensionRoles：获取并返回所有维度角色信息，成功时返回维度角色数组，失败返回错误信息。
-// 6.  POST /cube：根据请求体中的 cubeName、measures 和 dimensionRoles 创建新 Cube 及相关数据，成功返回新 Cube 信息，失败返回错误信息。
-// 7.  POST /dimension：根据请求体信息创建新的非度量维度及相关默认层级、根层级和根成员等数据，成功返回创建的相关信息，失败返回错误信息。
-// 8.  GET  /dimension/:gid/members：根据传入的维度 GID 获取该维度的成员树结构，成功返回成员数组，失败返回错误信息。
-// 9.  POST /child-member：根据请求体中的新成员名称和父成员 GID 创建新的子维度成员，成功返回新成员信息，失败返回错误信息。
-// 10. GET  /dimension/:gid/hierarchies：根据传入的维度 GID 获取该维度下的所有层级信息，成功返回层级数组，失败返回错误信息。
-// 11. GET  /hierarchy/:gid/members：根据传入的层级 GID 获取该层级下的所有成员信息，成功返回成员数组，失败返回错误信息。
-// 12. POST /calculated-metrics：根据请求体创建新的计算度量实例，成功返回新实例信息，失败返回错误信息。
-// 13. GET  /calculatedMetrics/cube/:cube_gid：根据传入的 Cube GID 获取该 Cube 的所有计算度量信息，成功返回计算度量数组，失败返回错误信息。 
-
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
@@ -30,6 +15,7 @@ const Member = require('../../models/Member');
 const Cube = require('../../models/Cube');
 const DimensionRole = require('../../models/DimensionRole');
 const CalculatedMetric = require('../../models/CalculatedMetric');
+const AdhocQuery = require('../../models/AdhocQuery');
 
 // 新增：获取所有维度的接口
 router.get('/dimensions', async (req, res) => {
@@ -803,6 +789,24 @@ router.get('/dimension/:gid/default-hierarchy-root-member', async (req, res) => 
   } catch (error) {
     console.error('Error fetching root member for dimension:', error);
     res.status(500).json({ success: false, message: 'Error fetching root member', error });
+  }
+});
+
+router.post('/adhoc-query', async (req, res) => {
+  const { uuid, name, cubeGid, jsonStr } = req.body;
+
+  try {
+    const newAdhocQuery = await AdhocQuery.create({
+      uuid,
+      name,
+      cubeGid,
+      jsonStr
+    });
+
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Error creating AdhocQuery:', error);
+    res.status(500).json({ success: false, message: 'Error creating AdhocQuery', error });
   }
 });
 
