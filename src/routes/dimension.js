@@ -810,4 +810,14 @@ router.post('/adhoc-query', async (req, res) => {
   }
 });
 
+router.get('/adhoc-queries', async (req, res) => {
+  try {
+    const adhocQueries = await AdhocQuery.findAll();
+    res.json({ success: true, data: adhocQueries });
+  } catch (error) {
+    console.error('Error fetching AdhocQueries:', error);
+    res.status(500).json({ success: false, message: 'Error fetching AdhocQueries', error });
+  }
+});
+
 module.exports = router;
