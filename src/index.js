@@ -338,6 +338,37 @@ async function GetChildMembersByGid(call, callback) {
 
 }
 
+async function GetAllDimensionRoles(call, callback) {
+  try {
+    const dimensionRoles = await DimensionRole.findAll({
+      order: [['gid', 'ASC']]
+    });
+
+    if (dimensionRoles && dimensionRoles.length > 0) {
+      const response = {
+        dimensionRoles: dimensionRoles.map(role => ({
+          gid: role.gid,
+          code: role.code,
+          name: role.name,
+          alias: role.alias,
+          display: role.display,
+          created_by: role.created_by,
+          updated_by: role.updated_by,
+          description: role.description,
+          cubeGid: role.cubeGid,
+          dimensionGid: role.dimensionGid,
+          measureFlag: role.measureFlag,
+        }))
+      };
+      callback(null, response);
+    } else {
+      callback(new Error('No DimensionRoles found'), null);
+    }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -351,6 +382,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   LocateUniversalOlapEntityByName: LocateUniversalOlapEntityByName,
   GetUniversalOlapEntityByGid: GetUniversalOlapEntityByGid,
   GetChildMembersByGid,
+  GetAllDimensionRoles,
 });
 
 // 4. 启动服务端
