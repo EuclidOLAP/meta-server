@@ -8,6 +8,7 @@ const md_query_api_routes = require('./routes/md-query-api');
 
 const Cube = require('../models/Cube');
 const DimensionRole = require('../models/DimensionRole');
+const Level = require('../models/Level');
 const Dimension = require('../models/Dimension');
 const Member = require('../models/Member');
 
@@ -369,6 +370,32 @@ async function GetAllDimensionRoles(call, callback) {
   }
 }
 
+async function GetAllLevels(call, callback) {
+  try {
+    const levels = await Level.findAll({
+      order: [['gid', 'ASC']]
+    });
+
+    if (levels && levels.length > 0) {
+      const response = {
+        levels: levels.map(lv => ({
+          olapEntityClass: 'Level',
+          gid: lv.gid,
+          name: lv.name,
+          // measureIndex: 0,
+          level: lv.level,
+          // parentGid: 0,
+        }))
+      };
+      callback(null, response);
+    } else {
+      callback(new Error('No Levels found'), null);
+    }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -383,6 +410,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetUniversalOlapEntityByGid: GetUniversalOlapEntityByGid,
   GetChildMembersByGid,
   GetAllDimensionRoles,
+  GetAllLevels,
 });
 
 // 4. 启动服务端

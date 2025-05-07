@@ -81,6 +81,8 @@ service OlapMetaService {
     rpc GetUniversalOlapEntityByGid (GetUniversalOlapEntityByGidRequest) returns (UniversalOlapEntity);
 
     rpc GetAllDimensionRoles (EmptyParameterRequest) returns (GetAllDimensionRolesResponse);
+
+    rpc GetAllLevels (EmptyParameterRequest) returns (GetAllLevelsResponse);
 }
 
 message GetAllDimensionRolesResponse {
@@ -126,4 +128,8 @@ message GetChildMembersByGidRequest {
 
 message GetChildMembersByGidResponse {
     repeated GrpcMember childMembers = 1;
+}
+
+message GetAllLevelsResponse {
+    repeated UniversalOlapEntity levels = 1;
 }
