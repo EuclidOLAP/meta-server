@@ -38,6 +38,12 @@ const Level = sequelize_conn.define('Level', {
   },
   level: {
     type: DataTypes.INTEGER.UNSIGNED
+  },
+  openingPeriodGid: {
+    type: DataTypes.BIGINT.UNSIGNED
+  },
+  closingPeriodGid: {
+    type: DataTypes.BIGINT.UNSIGNED
   }
 }, {
   tableName: 'level',  // 指定数据库中的表名

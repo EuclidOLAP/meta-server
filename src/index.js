@@ -385,11 +385,40 @@ async function GetAllLevels(call, callback) {
           // measureIndex: 0,
           level: lv.level,
           // parentGid: 0,
+          openingPeriodGid: lv.openingPeriodGid,
+          closingPeriodGid: lv.closingPeriodGid,
         }))
       };
       callback(null, response);
     } else {
       callback(new Error('No Levels found'), null);
+    }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
+async function GetAllMembers(call, callback) {
+  try {
+    const members = await Member.findAll({
+      order: [['gid', 'ASC']]
+    });
+
+    if (members && members.length > 0) {
+      const response = {
+        members: members.map(member => ({
+          gid: member.gid,
+          name: member.name,
+          dimensionGid: member.dimensionGid,
+          hierarchyGid: member.hierarchyGid,
+          levelGid: member.levelGid,
+          level: member.level,
+          parentGid: member.parentGid,
+        }))
+      };
+      callback(null, response);
+    } else {
+      callback(new Error('No Members found'), null);
     }
   } catch (err) {
     callback(err, null);
@@ -411,6 +440,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetChildMembersByGid,
   GetAllDimensionRoles,
   GetAllLevels,
+  GetAllMembers,
 });
 
 // 4. 启动服务端
