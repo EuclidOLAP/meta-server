@@ -209,6 +209,7 @@ function GetDimensionRoleByGid(call, callback) {
         description: dimensionRole.description,
         cubeGid: dimensionRole.cubeGid,
         dimensionGid: dimensionRole.dimensionGid,
+        defaultHierarchyGid: dimensionRole.defaultHierarchyGid,
         measureFlag: dimensionRole.measureFlag,
       };
       callback(null, response);  // 返回查询到的数据
@@ -359,6 +360,7 @@ async function GetAllDimensionRoles(call, callback) {
           cubeGid: role.cubeGid,
           dimensionGid: role.dimensionGid,
           measureFlag: role.measureFlag,
+          defaultHierarchyGid: role.defaultHierarchyGid,
         }))
       };
       callback(null, response);
@@ -385,6 +387,8 @@ async function GetAllLevels(call, callback) {
           // measureIndex: 0,
           level: lv.level,
           // parentGid: 0,
+          dimensionGid: lv.dimensionGid,
+          hierarchyGid: lv.hierarchyGid,
           openingPeriodGid: lv.openingPeriodGid,
           closingPeriodGid: lv.closingPeriodGid,
         }))
