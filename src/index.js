@@ -175,6 +175,7 @@ function GetDefaultDimensionMemberByDimensionGid(call, callback) {
           levelGid: member.levelGid,
           level: member.level,
           parentGid: member.parentGid,
+          leaf: member.leaf,
         });
 
       }).catch(err => {
@@ -418,6 +419,7 @@ async function GetAllMembers(call, callback) {
           levelGid: member.levelGid,
           level: member.level,
           parentGid: member.parentGid,
+          leaf: member.leaf,
         }))
       };
       callback(null, response);
