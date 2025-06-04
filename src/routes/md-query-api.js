@@ -1,3 +1,5 @@
+const jsyaml = require('js-yaml');
+
 // multi-dimensional query API
 
 // const grpc = require('@grpc/grpc-js');
@@ -37,7 +39,89 @@ mdq_api_router.post('/mdx', async (request, response) => {
 
     response.status(200).json(grpc_olap_response.vectors);
   });
+  
+});
 
+// 工具函数
+function formatCol(col) {
+  if (!Array.isArray(col) || col.length === 0) return '{}';
+  const transposed = col[0].map((_, i) => col.map(row => row[i]));
+  return `{ ${transposed.map(tuple => `(${tuple.join(', ')})`).join(', ')} }`;
+}
+
+function formatRow(row) {
+  if (!Array.isArray(row)) return '{}';
+  return `{ ${row.map(pair => `(${pair.join(',')})`).join(', ')} }`;
+}
+
+function formatSlice(slice) {
+  if (!Array.isArray(slice)) return '()';
+  return `(${slice.join(', ')})`;
+}
+
+// 路由定义
+mdq_api_router.post('/yaml', async (request, response) => {
+  const { yaml } = request.body;
+  if (typeof yaml !== 'string') {
+    return response.status(400).json({ error: 'Invalid or missing YAML string in request body.' });
+  }
+
+  let yaml_mdx_str = '';
+
+  try {
+    const parsed = jsyaml.load(yaml);
+    console.log("✅ YAML parsed successfully.");
+
+    const type = parsed?.type || '';
+    const model = parsed?.model;
+    const col = parsed?.col;
+    const row = parsed?.row;
+    const slice = parsed?.slice;
+
+    if (!model || !col || !row || !slice) {
+      return response.status(400).json({ error: 'YAML missing required fields: model, col, row, or slice.' });
+    }
+
+    const mdxCube = model;
+    const mdxColumns = formatCol(col);
+    const mdxRows = formatRow(row);
+    const mdxWhere = formatSlice(slice);
+
+    yaml_mdx_str = `select
+      ${mdxColumns}
+      on columns,
+      ${mdxRows}
+      on rows
+    from ${mdxCube}
+    where ${mdxWhere}`;
+
+    console.log("📄 Generated MDX from YAML:");
+    console.log(yaml_mdx_str);
+
+    // 异步写入日志（不 await，后台执行）
+    MdxExecutionLog.create({ mdx: yaml_mdx_str });
+
+    // 构造请求
+    const requestPayload = {
+      operation_type: 'MDX',
+      statement: yaml_mdx_str,
+    };
+
+    // 执行 gRPC 请求
+    olapClient.ExecuteOperation(requestPayload, (error, grpc_olap_response) => {
+      if (error) {
+        console.error('❌ gRPC call failed:', error);
+        return response.status(500).json({ error: 'gRPC call failed', details: error.message });
+      }
+
+      console.log('✅ gRPC response received.');
+      return response.status(200).json(grpc_olap_response.vectors);
+    });
+
+  } catch (e) {
+    console.error("❌ Failed to parse YAML:", e);
+    return response.status(400).json({ error: 'Invalid YAML', details: e.message });
+  }
 });
 
 module.exports = mdq_api_router;
