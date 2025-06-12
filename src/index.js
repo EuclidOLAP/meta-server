@@ -431,6 +431,26 @@ async function GetAllMembers(call, callback) {
   }
 }
 
+async function GetAllCubes(call, callback) {
+  try {
+    const cubes = await Cube.findAll();
+
+    if (cubes && cubes.length > 0) {
+      const response = {
+        cubes: cubes.map(cube => ({
+          gid: cube.gid,
+          name: cube.name,
+        }))
+      };
+      callback(null, response);
+    } else {
+      callback(new Error('No Cubes found'), null);
+    }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -447,6 +467,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetAllDimensionRoles,
   GetAllLevels,
   GetAllMembers,
+  GetAllCubes,
 });
 
 // 4. 启动服务端
