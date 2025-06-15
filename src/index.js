@@ -6,6 +6,7 @@ const cors = require('cors');  // 引入 CORS 中间件
 const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 const md_query_api_routes = require('./routes/md-query-api');
 
+const CalculatedMetric = require('../models/CalculatedMetric');
 const Cube = require('../models/Cube');
 const DimensionRole = require('../models/DimensionRole');
 const Level = require('../models/Level');
@@ -451,6 +452,35 @@ async function GetAllCubes(call, callback) {
   }
 }
 
+async function GetAllFormulaMembers(call, callback) {
+  try {
+    const formulaMembers = await CalculatedMetric.findAll();
+
+    if (formulaMembers && formulaMembers.length > 0) {
+      const response = {
+        formulaMembers: formulaMembers.map(fm => ({
+            olapEntityClass: 'FormulaMember',
+            gid: fm.dataValues.gid,
+            name: fm.dataValues.name,
+            level: fm.dataValues.level,
+            levelGid: fm.dataValues.levelGid,
+            dimensionGid: fm.dataValues.dimensionGid,
+            hierarchyGid: fm.dataValues.hierarchyGid,
+            cubeGid: fm.dataValues.cubeGid,
+            dimensionRoleGid: fm.dataValues.dimensionRoleGid,
+            mountPointGid: fm.dataValues.mountPointGid,
+            exp: fm.dataValues.exp,
+          }))
+      };
+      callback(null, response);
+    } else {
+      callback(new Error('No FormulaMembers found'), null);
+    }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
 // 3. 创建 gRPC 服务
 const server = new grpc.Server();
 server.addService(olapmeta.OlapMetaService.service, {
@@ -468,6 +498,7 @@ server.addService(olapmeta.OlapMetaService.service, {
   GetAllLevels,
   GetAllMembers,
   GetAllCubes,
+  GetAllFormulaMembers,
 });
 
 // 4. 启动服务端
