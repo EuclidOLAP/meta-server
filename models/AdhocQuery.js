@@ -30,6 +30,9 @@ const AdhocQuery = sequelize_conn.define('AdhocQuery', {
   jsonStr: {
     type: DataTypes.TEXT
   },
+  raw_data_table_json_str: {
+    type: DataTypes.TEXT,
+  },
 }, {
   tableName: 'adhoc_query',  // 指定数据库中的表名
   freezeTableName: true, // 禁用 Sequelize 自动管理表结构

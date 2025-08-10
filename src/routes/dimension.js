@@ -16,6 +16,7 @@ const Cube = require('../../models/Cube');
 const DimensionRole = require('../../models/DimensionRole');
 const CalculatedMetric = require('../../models/CalculatedMetric');
 const AdhocQuery = require('../../models/AdhocQuery');
+const Dashboard = require('../../models/Dashboard'); // 新增Dashboard模型引入
 
 // 新增：获取所有维度的接口
 router.get('/dimensions', async (req, res) => {
@@ -793,14 +794,15 @@ router.get('/dimension/:gid/default-hierarchy-root-member', async (req, res) => 
 });
 
 router.post('/adhoc-query', async (req, res) => {
-  const { uuid, name, cubeGid, jsonStr } = req.body;
+  const { uuid, name, cubeGid, jsonStr, raw_data_table_json_str } = req.body;
 
   try {
     const newAdhocQuery = await AdhocQuery.create({
       uuid,
       name,
       cubeGid,
-      jsonStr
+      jsonStr,
+      raw_data_table_json_str
     });
 
     res.status(201).json({ success: true });
@@ -817,6 +819,31 @@ router.get('/adhoc-queries', async (req, res) => {
   } catch (error) {
     console.error('Error fetching AdhocQueries:', error);
     res.status(500).json({ success: false, message: 'Error fetching AdhocQueries', error });
+  }
+});
+
+// 保存Dashboard的API
+router.post('/dashboard', async (req, res) => {
+  try {
+    const data = req.body;
+    // 创建或更新逻辑，根据需要调整
+    // 这里简单用create演示
+    const dashboard = await Dashboard.create(data);
+    res.json({ success: true, data: dashboard });
+  } catch (error) {
+    console.error('Error saving dashboard:', error);
+    res.status(500).json({ success: false, message: 'Failed to save dashboard', error });
+  }
+});
+
+// 查询Dashboard列表API
+router.get('/dashboards', async (req, res) => {
+  try {
+    const dashboards = await Dashboard.findAll();
+    res.json({ success: true, data: dashboards });
+  } catch (error) {
+    console.error('Error fetching dashboards:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch dashboards', error });
   }
 });
 
