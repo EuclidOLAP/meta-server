@@ -27,18 +27,6 @@ app.use('/api', dimensionRoutes);
 
 app.use('/md-query', md_query_api_routes);
 
-// API 路由，返回一些模拟数据
-app.get('/api/data', (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 1, name: '产品A', value: 100 },
-      { id: 2, name: '产品B', value: 200 },
-      { id: 3, name: '产品C', value: 300 }
-    ]
-  });
-});
-
 /*
  * olap meta grpc server
  */
