@@ -1,6 +1,4 @@
-const express = require('express');
 const bodyParser = require('body-parser');
-const app = express();
 const cors = require('cors');  // 引入 CORS 中间件
 
 const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
@@ -14,9 +12,6 @@ const Dimension = require('../models/Dimension');
 const Member = require('../models/Member');
 
 const { OlapEntityType, getOlapEntityTypeByGid } = require('./utils');
-
-// 设置端口号，默认 3000
-const PORT = process.env.PORT || 8763;
 
 // 配置 CORS
 app.use(cors({
@@ -32,11 +27,6 @@ app.use('/api', dimensionRoutes);
 
 app.use('/md-query', md_query_api_routes);
 
-// 根路由响应
-app.get('/', (req, res) => {
-  res.send('<h1>EuclidOLAP Meta Server</h1>');
-});
-
 // API 路由，返回一些模拟数据
 app.get('/api/data', (req, res) => {
   res.json({
@@ -48,12 +38,6 @@ app.get('/api/data', (req, res) => {
     ]
   });
 });
-
-// 启动服务器
-app.listen(PORT, () => {
-  console.log(`Meta-server is running on port ${PORT}`);
-});
-
 
 /*
  * olap meta grpc server

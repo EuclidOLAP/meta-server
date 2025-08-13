@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.tsx",
   "scripts": {
-    "start": "ts-node index.tsx",
     "dev": "ts-node-dev --respawn index.tsx",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,12 +16,13 @@
     "@grpc/grpc-js": "^1.12.4",
     "@grpc/proto-loader": "^0.7.13",
     "cors": "^2.8.5",
-    "express": "^4.21.1",
+    "express": "^4.21.2",
     "js-yaml": "^4.1.0",
     "mysql2": "^3.11.3",
     "sequelize": "^6.37.4"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^24.2.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
