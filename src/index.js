@@ -1,17 +1,7 @@
 const bodyParser = require('body-parser');
 const cors = require('cors');  // 引入 CORS 中间件
-
 const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 const md_query_api_routes = require('./routes/md-query-api');
-
-const CalculatedMetric = require('../models/CalculatedMetric');
-const Cube = require('../models/Cube');
-const DimensionRole = require('../models/DimensionRole');
-const Level = require('../models/Level');
-const Dimension = require('../models/Dimension');
-const Member = require('../models/Member');
-
-const { OlapEntityType, getOlapEntityTypeByGid } = require('./utils');
 
 // 配置 CORS
 app.use(cors({
@@ -26,6 +16,72 @@ app.use(bodyParser.json()); // 解析 JSON 请求体
 app.use('/api', dimensionRoutes);
 
 app.use('/md-query', md_query_api_routes);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const CalculatedMetric = require('../models/CalculatedMetric');
+const Cube = require('../models/Cube');
+const DimensionRole = require('../models/DimensionRole');
+const Level = require('../models/Level');
+const Dimension = require('../models/Dimension');
+const Member = require('../models/Member');
+const { OlapEntityType, getOlapEntityTypeByGid } = require('./utils');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  * olap meta grpc server
@@ -44,6 +100,71 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 const protoDescriptor = grpc.loadPackageDefinition(packageDefinition);
 const olapmeta = protoDescriptor.olapmeta;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // 2. 创建服务端并实现服务
 function getCubeByGid(call, callback) {
