@@ -1,15 +1,15 @@
-const bodyParser = require('body-parser');
-const cors = require('cors');  // 引入 CORS 中间件
+// const bodyParser = require('body-parser');
+// const cors = require('cors');  // 引入 CORS 中间件
 
 
-// 配置 CORS
-app.use(cors({
-  origin: ['http://dev.vm:18766', 'http://analysis:8766'],  // 允许前端所在的域名
-  methods: ['GET', 'POST'],      // 允许的请求方法
-  credentials: true              // 如果需要处理认证或cookie，可以启用此选项
-}));
+// // 配置 CORS
+// app.use(cors({
+//   origin: ['http://dev.vm:18766', 'http://analysis:8766'],  // 允许前端所在的域名
+//   methods: ['GET', 'POST'],      // 允许的请求方法
+//   credentials: true              // 如果需要处理认证或cookie，可以启用此选项
+// }));
 
-app.use(bodyParser.json()); // 解析 JSON 请求体
+// app.use(bodyParser.json()); // 解析 JSON 请求体
 
 
 
