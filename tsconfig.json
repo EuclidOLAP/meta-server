@@ -14,7 +14,7 @@
   },
   "include": [
     "src/**/*", // Compile all files under src (JS/TS)
-    "index.tsx" // Compile root entry file
+    "index.ts" // Compile root entry file
   ],
   "exclude": [
     "node_modules", // Exclude dependencies
