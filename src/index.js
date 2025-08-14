@@ -1,7 +1,6 @@
 const bodyParser = require('body-parser');
 const cors = require('cors');  // 引入 CORS 中间件
-const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
-const md_query_api_routes = require('./routes/md-query-api');
+
 
 // 配置 CORS
 app.use(cors({
@@ -11,6 +10,28 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json()); // 解析 JSON 请求体
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
+const md_query_api_routes = require('./routes/md-query-api');
 
 // 使用维度路由
 app.use('/api', dimensionRoutes);
