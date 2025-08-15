@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 
 // import orderRoutes from "./src/routes/order";
+import metaRoutes from "./src/routes/meta-restful-api";
 
 const app = express();
 
@@ -34,8 +35,10 @@ app.get("/mock", (req, res) => {
 // // 挂载订单路由
 // app.use("/orders", orderRoutes);
 
+app.use("/api", metaRoutes);
+
 // 启动服务器
 const PORT = 8763;
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}.`);
 });
