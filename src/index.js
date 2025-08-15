@@ -30,11 +30,11 @@
 
 
 
-const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
+// const dimensionRoutes = require('./routes/dimension'); // 引入维度路由
 const md_query_api_routes = require('./routes/md-query-api');
 
-// 使用维度路由
-app.use('/api', dimensionRoutes);
+// // 使用维度路由
+// app.use('/api', dimensionRoutes);
 
 app.use('/md-query', md_query_api_routes);
 
