@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 
+// import orderRoutes from "./src/routes/order";
+
 const app = express();
 
 app.use(
@@ -28,6 +30,9 @@ app.get("/mock", (req, res) => {
     ],
   });
 });
+
+// // 挂载订单路由
+// app.use("/orders", orderRoutes);
 
 // 启动服务器
 const PORT = 8763;
