@@ -3,6 +3,7 @@ import cors from "cors";
 
 // import orderRoutes from "./src/routes/order";
 import metaRoutes from "./src/routes/meta-restful-api";
+import adhocRoutes from "./src/routes/adhoc-restful";
 
 const app = express();
 
@@ -36,9 +37,16 @@ app.get("/mock", (req, res) => {
 // app.use("/orders", orderRoutes);
 
 app.use("/api", metaRoutes);
+app.use('/md-query', adhocRoutes);
 
 // 启动服务器
 const PORT = 8763;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}.`);
 });
+
+// ############################################################
+// ##               start the meta grpc server               ##
+// ############################################################
+import startMetaGrpcServer from "./src/meta-grpc/olap-meta-grpc-server";
+startMetaGrpcServer();
