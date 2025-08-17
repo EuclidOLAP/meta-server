@@ -37,7 +37,7 @@ app.get("/mock", (req, res) => {
 // app.use("/orders", orderRoutes);
 
 app.use("/api", metaRoutes);
-app.use('/md-query', adhocRoutes);
+app.use("/md-query", adhocRoutes);
 
 // 启动服务器
 const PORT = 8763;
