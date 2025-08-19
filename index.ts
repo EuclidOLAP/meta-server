@@ -1,9 +1,13 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import 'dotenv/config';
 
 // import orderRoutes from "./src/routes/order";
 import metaRoutes from "./src/routes/meta-restful-api";
 import adhocRoutes from "./src/routes/adhoc-restful";
+import authRoutes from "./src/routes/auth";
+import { requireAuth } from "./src/middlewares/requireAuth";
 
 const app = express();
 
@@ -16,6 +20,7 @@ app.use(
 );
 
 app.use(express.json());
+app.use(cookieParser());
 
 // 定义一个简单的路由
 app.get("/", (req, res) => {
@@ -31,6 +36,14 @@ app.get("/mock", (req, res) => {
       { id: 2, code: "qwe_SSS", value: 202 },
     ],
   });
+});
+
+// 公开路由
+app.use("/auth", authRoutes);
+
+// 测试受保护 API
+app.get("/secure-data", requireAuth, (req, res) => {
+  res.json({ message: "Protected data", userId: (req as any).userId });
 });
 
 // // 挂载订单路由
