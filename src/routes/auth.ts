@@ -1,5 +1,6 @@
+// auth.ts
 import { Router } from "express";
-import { signAccessToken, signRefreshToken } from "../middlewares/requireAuth";
+import { signAccessToken, signRefreshToken, requireAuth } from "../middlewares/requireAuth";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../permission/User";
@@ -18,7 +19,7 @@ router.post("/login", async (req, res) => {
     const match = await bcrypt.compare(password, user.pswd_hash);
     if (!match) return res.status(401).json({ error: "Invalid credentials" });
 
-    const userId = user.user_name; // or any unique identifier
+    const userId = user.user_name;
 
     const accessToken = signAccessToken(userId);
     const refreshToken = signRefreshToken(userId);
@@ -54,6 +55,24 @@ router.post("/refresh", (req, res) => {
 router.post("/logout", (req, res) => {
   res.clearCookie("refreshToken");
   res.json({ success: true });
+});
+
+// ===== 新增获取当前用户接口 =====
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const user = await User.findByPk(userId, {
+      // attributes: ["user_name", "is_admin", "code", "alias", "display"]
+      attributes: ["user_name", "is_admin"],
+    });
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({ user: { user_name: user.user_name } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;
