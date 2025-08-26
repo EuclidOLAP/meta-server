@@ -1,13 +1,17 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import 'dotenv/config';
+import "dotenv/config";
 
 // import orderRoutes from "./src/routes/order";
 import metaRoutes from "./src/routes/meta-restful-api";
 import adhocRoutes from "./src/routes/adhoc-restful";
 import authRoutes from "./src/routes/auth";
 import { requireAuth } from "./src/middlewares/requireAuth";
+
+import { initAdminUsers } from "./src/permission/permission";
+
+initAdminUsers();
 
 const app = express();
 

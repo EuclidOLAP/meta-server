@@ -9,17 +9,17 @@ import path from "path";
 import { AsyncLocalStorage } from "async_hooks";
 const asyncLocalStorage = new AsyncLocalStorage();
 
-const sequelize_conn = require("../../config/database");
+const sequelize_conn = require("../config/database");
 
-const Dimension = require("../../models/Dimension"); // 引入维度模型
-const Cube = require("../../models/Cube");
-const DimensionRole = require("../../models/DimensionRole");
-const Dashboard = require("../../models/Dashboard"); // 新增Dashboard模型引入
-const AdhocQuery = require("../../models/AdhocQuery");
-const Hierarchy = require("../../models/Hierarchy");
-const Member = require("../../models/Member");
-const Level = require("../../models/Level");
-const CalculatedMetric = require("../../models/CalculatedMetric");
+const Dimension = require("../models/Dimension"); // 引入维度模型
+const Cube = require("../models/Cube");
+const DimensionRole = require("../models/DimensionRole");
+const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
+const AdhocQuery = require("../models/AdhocQuery");
+const Hierarchy = require("../models/Hierarchy");
+const Member = require("../models/Member");
+const Level = require("../models/Level");
+const CalculatedMetric = require("../models/CalculatedMetric");
 
 const router = Router();
 
@@ -424,13 +424,11 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
     res.json({ success: true, message: "Measures data are doing generated." });
   } catch (error) {
     console.error("Error generating measure data:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Error generating measure data",
-        error,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Error generating measure data",
+      error,
+    });
   }
 });
 
@@ -699,12 +697,10 @@ router.post("/cube", async (req, res) => {
   } catch (error: any) {
     await transaction.rollback(); // 如果出现任何错误，回滚事务
     console.error(error.message);
-    res
-      .status(500)
-      .json({
-        error: "Failed to build cube with related data",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to build cube with related data",
+      details: error.message,
+    });
   }
 });
 
@@ -786,12 +782,10 @@ router.post("/child-member", async (req, res) => {
   } catch (error: any) {
     await transaction.rollback(); // 如果出现任何错误，回滚事务
     console.error(error.message);
-    res
-      .status(500)
-      .json({
-        error: "Failed to create dimension with related data",
-        details: error.message,
-      });
+    res.status(500).json({
+      error: "Failed to create dimension with related data",
+      details: error.message,
+    });
   }
 });
 
@@ -838,13 +832,11 @@ router.post("/calculated-metrics", async (req, res) => {
   } catch (error) {
     await transaction.rollback(); // 如果出现任何错误，回滚事务
     console.error("Error creating CalculatedMetric:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to create CalculatedMetric",
-        error,
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to create CalculatedMetric",
+      error,
+    });
   }
 });
 

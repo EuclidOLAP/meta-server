@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 
 const { olapClient } = require("../grpc-client-impl");
-const MdxExecutionLog = require("../../models/MdxExecutionLog");
+const MdxExecutionLog = require("../models/MdxExecutionLog");
 
 // 工具函数
 function formatCol(col: any) {
