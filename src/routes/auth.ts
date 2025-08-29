@@ -3,7 +3,7 @@ import { Router } from "express";
 import { signAccessToken, signRefreshToken, requireAuth } from "../middlewares/requireAuth";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import User from "../permission/User";
+import User from "../database/User";
 import { REFRESH_TOKEN_SECRET } from "../config/jwt";
 
 const router = Router();

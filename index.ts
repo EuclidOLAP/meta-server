@@ -7,7 +7,6 @@ import "dotenv/config";
 import metaRoutes from "./src/routes/meta-restful-api";
 import adhocRoutes from "./src/routes/adhoc-restful";
 import authRoutes from "./src/routes/auth";
-import { requireAuth } from "./src/middlewares/requireAuth";
 
 import { initAdminUsers } from "./src/permission/permission";
 
@@ -26,32 +25,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// 定义一个简单的路由
-app.get("/", (req, res) => {
-  res.send("Hello from Express + TypeScript!");
-});
-
-// mock api
-app.get("/mock", (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      { id: 1, code: "123_000", value: 101 },
-      { id: 2, code: "qwe_SSS", value: 202 },
-    ],
-  });
-});
-
 // 公开路由
 app.use("/auth", authRoutes);
-
-// 测试受保护 API
-app.get("/secure-data", requireAuth, (req, res) => {
-  res.json({ message: "Protected data", userId: (req as any).userId });
-});
-
-// // 挂载订单路由
-// app.use("/orders", orderRoutes);
 
 app.use("/api", metaRoutes);
 app.use("/md-query", adhocRoutes);

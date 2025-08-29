@@ -1,4 +1,4 @@
-import User from "./User";
+import User from "../database/User";
 import bcrypt from "bcrypt";
 
 const SALT_ROUNDS = 10;
