@@ -75,4 +75,19 @@ router.get("/me", requireAuth, async (req, res) => {
   }
 });
 
+// // 获取全部用户
+// router.get("/users", requireAuth, async (req, res) => {
+//   try {
+//     // 只返回 user_name 和 is_admin，避免泄露密码
+//     const users = await User.findAll({
+//       attributes: ["user_name", "is_admin", "created_at", "updated_at", "description"],
+//     });
+
+//     res.json({ users });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// });
+
 export default router;
