@@ -3,42 +3,48 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import "dotenv/config";
 
-// import orderRoutes from "./src/routes/order";
 import metaRoutes from "./src/routes/meta-restful-api";
 import adhocRoutes from "./src/routes/adhoc-restful";
 import authRoutes from "./src/routes/auth";
 
 import { initAdminUsers } from "./src/permission/permission";
 
+// ############################################################
+// ##             Initialize system (admin users etc.)       ##
+// ############################################################
 initAdminUsers();
 
+// ############################################################
+// ##             Create and configure Express app           ##
+// ############################################################
 const app = express();
-
 app.use(
   cors({
-    origin: ["http://dev.vm:18766", "http://analysis:8766"], // 允许前端所在的域名
-    methods: ["GET", "POST"], // 允许的请求方法
-    credentials: true, // 处理认证或 cookie 时启用
+    origin: ["http://dev.vm:18766", "http://analysis:8766"], // allowed frontend domains
+    methods: ["GET", "POST"], // allowed request methods
+    credentials: true, // enable cookies or auth headers
   })
 );
+app.use(express.json()); // parse JSON request body
+app.use(cookieParser()); // parse cookies
 
-app.use(express.json());
-app.use(cookieParser());
+// ############################################################
+// ##                  Register route modules                ##
+// ############################################################
+app.use("/auth", authRoutes); // authentication routes
+app.use("/api", metaRoutes); // metadata routes
+app.use("/md-query", adhocRoutes); // ad-hoc query routes
 
-// 公开路由
-app.use("/auth", authRoutes);
-
-app.use("/api", metaRoutes);
-app.use("/md-query", adhocRoutes);
-
-// 启动服务器
+// ############################################################
+// ##                  Start HTTP server                     ##
+// ############################################################
 const PORT = 8763;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}.`);
 });
 
 // ############################################################
-// ##               start the meta grpc server               ##
+// ##                  Start Meta gRPC server                ##
 // ############################################################
 import startMetaGrpcServer from "./src/meta-grpc/olap-meta-grpc-server";
 startMetaGrpcServer();
