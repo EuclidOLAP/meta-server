@@ -12,7 +12,10 @@ const asyncLocalStorage = new AsyncLocalStorage();
 const sequelize_conn = require("../config/database");
 
 const Dimension = require("../models/Dimension"); // 引入维度模型
-const Cube = require("../models/Cube");
+
+// const Cube = require("../models/Cube");
+import Cube from "../database/Cube";
+
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
 const AdhocQuery = require("../models/AdhocQuery");
