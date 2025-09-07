@@ -15,6 +15,7 @@ const Dimension = require("../models/Dimension"); // 引入维度模型
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
@@ -967,6 +968,107 @@ router.post("/dashboard", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to save dashboard", error });
+  }
+});
+
+// #################################################################
+// ##                  User Olap Entities Access                  ##
+// #################################################################
+
+// 根据 user_name 查询全部权限
+router.get("/userOlapModelAccess/:user_name", async (req, res) => {
+  const { user_name } = req.params;
+  try {
+    const userAccess = await UserOlapModelAccess.findAll({
+      where: { user_name },
+    });
+    if (userAccess.length > 0) {
+      res.json({ success: true, data: userAccess });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: `No access found for user ${user_name}`,
+      });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Error fetching user access", error });
+  }
+});
+
+// 创建或更新权限记录
+router.post("/userOlapModelAccess", async (req, res) => {
+  const {
+    user_name,
+    permission_scope,
+    dimension_role_gid,
+    olap_entity_gid,
+    has_access,
+  } = req.body;
+
+  try {
+    // 检查是否已经存在记录
+    const existingAccess = await UserOlapModelAccess.findOne({
+      where: { user_name, dimension_role_gid, olap_entity_gid },
+    });
+
+    if (existingAccess) {
+      // 如果记录存在，则更新
+      const [updated] = await UserOlapModelAccess.update(
+        { permission_scope, has_access },
+        { where: { user_name, dimension_role_gid, olap_entity_gid } }
+      );
+
+      if (updated) {
+        const updatedAccess = await UserOlapModelAccess.findOne({
+          where: { user_name, dimension_role_gid, olap_entity_gid },
+        });
+        return res.json({ success: true, data: updatedAccess });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "Error updating user access",
+        });
+      }
+    } else {
+      // 如果记录不存在，则创建
+      const newAccess = await UserOlapModelAccess.create({
+        user_name,
+        permission_scope,
+        dimension_role_gid,
+        olap_entity_gid,
+        has_access,
+      });
+      return res.json({ success: true, data: newAccess });
+    }
+  } catch (error) {
+    console.error("Error creating or updating user access:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error processing request", error });
+  }
+});
+
+// 删除一个权限记录
+router.delete("/userOlapModelAccess", async (req, res) => {
+  const { user_name, olap_entity_gid } = req.body; // 从请求体中获取 user_name 和 olap_entity_gid
+  try {
+    const deletedAccess = await UserOlapModelAccess.destroy({
+      where: { user_name, olap_entity_gid }, // 使用联合条件删除
+    });
+    if (deletedAccess) {
+      res.json({ success: true, message: "User access deleted successfully" });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: `No access record found for user ${user_name} and entity ${olap_entity_gid}`,
+      });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Error deleting user access", error });
   }
 });
 
