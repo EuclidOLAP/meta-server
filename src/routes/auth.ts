@@ -3,7 +3,7 @@ import { Router } from "express";
 import { signAccessToken, signRefreshToken, requireAuth } from "../middlewares/requireAuth";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import User from "../permission/User";
+import User from "../database/User";
 import { REFRESH_TOKEN_SECRET } from "../config/jwt";
 
 const router = Router();
@@ -68,7 +68,63 @@ router.get("/me", requireAuth, async (req, res) => {
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    res.json({ user: { user_name: user.user_name } });
+    res.json({ user: { user_name: user.user_name, is_admin: user.is_admin } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 获取全部用户
+router.get("/users", requireAuth, async (req, res) => {
+  try {
+    // 只返回 user_name 和 is_admin，避免泄露密码
+    const users = await User.findAll({
+      attributes: ["user_name", "is_admin", "created_at", "updated_at", "description"],
+    });
+    res.json({ users });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 创建用户
+router.post("/user", requireAuth, async (req, res) => {
+  try {
+    const { username, password, is_admin = false, description = "" } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    // 检查是否已存在
+    const existingUser = await User.findByPk(username);
+    if (existingUser) {
+      return res.status(409).json({ error: "User already exists" });
+    }
+
+    // 加密密码
+    const pswd_hash = await bcrypt.hash(password, 10);
+
+    // 插入数据库
+    const newUser = await User.create({
+      user_name: username,
+      pswd_hash,
+      is_admin,
+      description,
+    });
+
+    // 返回新建用户（不返回 hash）
+    res.status(201).json({
+      user: {
+        user_name: newUser.user_name,
+        is_admin: newUser.is_admin,
+        description: newUser.description,
+        created_at: newUser.created_at,
+        updated_at: newUser.updated_at,
+      },
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal server error" });

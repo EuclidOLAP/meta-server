@@ -2,7 +2,10 @@ const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 
 const CalculatedMetric = require("../models/CalculatedMetric");
-const Cube = require("../models/Cube");
+
+// const Cube = require("../models/Cube");
+import Cube from "../database/Cube";
+
 const DimensionRole = require("../models/DimensionRole");
 const Level = require("../models/Level");
 const Dimension = require("../models/Dimension");
@@ -409,7 +412,7 @@ async function GetAllFormulaMembers(call: any, callback: any) {
   try {
     const formulaMembers = await CalculatedMetric.findAll();
 
-    if (formulaMembers && formulaMembers.length > 0) {
+    // if (formulaMembers && formulaMembers.length > 0) {
       const response = {
         formulaMembers: formulaMembers.map((fm: any) => ({
           olapEntityClass: "FormulaMember",
@@ -426,9 +429,9 @@ async function GetAllFormulaMembers(call: any, callback: any) {
         })),
       };
       callback(null, response);
-    } else {
-      callback(new Error("No FormulaMembers found"), null);
-    }
+    // } else {
+    //   callback(new Error("No FormulaMembers found"), null);
+    // }
   } catch (err) {
     callback(err, null);
   }

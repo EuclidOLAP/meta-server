@@ -12,7 +12,15 @@ const asyncLocalStorage = new AsyncLocalStorage();
 const sequelize_conn = require("../config/database");
 
 const Dimension = require("../models/Dimension"); // 引入维度模型
-const Cube = require("../models/Cube");
+
+// const Cube = require("../models/Cube");
+import Cube from "../database/Cube";
+import UserOlapModelAccess from "../database/UserOlapModelAccess";
+
+import { requireAuth } from "../middlewares/requireAuth";
+
+import { OlapEntityTypeChecker } from "@euclidolap/olap-model";
+
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
 const AdhocQuery = require("../models/AdhocQuery");
@@ -53,6 +61,86 @@ router.get("/dimensionRoles", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Error fetching dimensions", error });
+  }
+});
+
+// 新增查询 Member full_path_text 的接口
+router.get("/member/:gid/full-path", requireAuth, async (req, res) => {
+  // const memberGid = req.params.gid;  // 获取请求参数中的 Member GID
+  const memberGid = parseInt(req.params.gid, 10);
+
+  console.log("\t\t\t\t\t\tFetching full path for member GID:", memberGid);
+
+  if (
+    OlapEntityTypeChecker.check(memberGid) ===
+    OlapEntityTypeChecker.enum.CalculatedMetric
+  ) {
+    const calculated_metric = await CalculatedMetric.findByPk(memberGid);
+    res.json({
+      success: true,
+      fullPathText: `[${calculated_metric.name}]`,
+    });
+    return;
+  }
+
+  if (
+    OlapEntityTypeChecker.check(memberGid) !== OlapEntityTypeChecker.enum.Member
+  ) {
+    throw new Error(
+      `[NDUS7560] The GID ${memberGid} does not correspond to a Member entity.`
+    );
+  }
+
+  try {
+    // 查找指定 GID 的 Member
+    const member = await Member.findByPk(memberGid);
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: `Member with GID ${memberGid} not found`,
+      });
+    }
+
+    // 获取该 Member 所在层级的所有祖先成员
+    const getFullPath = async (
+      memberGid: number,
+      path: string[] = []
+    ): Promise<string[]> => {
+      const member = await Member.findByPk(memberGid);
+      if (member) {
+        const parentMember = await Member.findByPk(member.parentGid); // 假设 Member 具有 parentGid 字段
+
+        // 拼接当前 Member 名称到路径
+        path.unshift(member.name);
+
+        if (parentMember) {
+          // 如果有父节点，则递归查询
+          return getFullPath(parentMember.gid, path);
+        } else {
+          // 如果没有父节点，说明已到达根节点，返回路径
+          return path;
+        }
+      }
+      return path;
+    };
+
+    // 获取路径
+    const fullPath = await getFullPath(memberGid);
+
+    // 将路径拼接成 string 类型：[组织维度].[集团].[公司].[事业部]
+    const fullPathText = fullPath.join("].[");
+    res.json({
+      success: true,
+      fullPathText: `[${fullPathText}]`,
+    });
+  } catch (error) {
+    console.error("Error fetching member full path:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching member full path",
+      error,
+    });
   }
 });
 
@@ -964,6 +1052,107 @@ router.post("/dashboard", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to save dashboard", error });
+  }
+});
+
+// #################################################################
+// ##                  User Olap Entities Access                  ##
+// #################################################################
+
+// 根据 user_name 查询全部权限
+router.get("/userOlapModelAccess/:user_name", async (req, res) => {
+  const { user_name } = req.params;
+  try {
+    const userAccess = await UserOlapModelAccess.findAll({
+      where: { user_name },
+    });
+    if (userAccess.length > 0) {
+      res.json({ success: true, data: userAccess });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: `No access found for user ${user_name}`,
+      });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Error fetching user access", error });
+  }
+});
+
+// 创建或更新权限记录
+router.post("/userOlapModelAccess", async (req, res) => {
+  const {
+    user_name,
+    permission_scope,
+    dimension_role_gid,
+    olap_entity_gid,
+    has_access,
+  } = req.body;
+
+  try {
+    // 检查是否已经存在记录
+    const existingAccess = await UserOlapModelAccess.findOne({
+      where: { user_name, dimension_role_gid, olap_entity_gid },
+    });
+
+    if (existingAccess) {
+      // 如果记录存在，则更新
+      const [updated] = await UserOlapModelAccess.update(
+        { permission_scope, has_access },
+        { where: { user_name, dimension_role_gid, olap_entity_gid } }
+      );
+
+      if (updated) {
+        const updatedAccess = await UserOlapModelAccess.findOne({
+          where: { user_name, dimension_role_gid, olap_entity_gid },
+        });
+        return res.json({ success: true, data: updatedAccess });
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "Error updating user access",
+        });
+      }
+    } else {
+      // 如果记录不存在，则创建
+      const newAccess = await UserOlapModelAccess.create({
+        user_name,
+        permission_scope,
+        dimension_role_gid,
+        olap_entity_gid,
+        has_access,
+      });
+      return res.json({ success: true, data: newAccess });
+    }
+  } catch (error) {
+    console.error("Error creating or updating user access:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error processing request", error });
+  }
+});
+
+// 删除一个权限记录
+router.delete("/userOlapModelAccess", async (req, res) => {
+  const { user_name, olap_entity_gid } = req.body; // 从请求体中获取 user_name 和 olap_entity_gid
+  try {
+    const deletedAccess = await UserOlapModelAccess.destroy({
+      where: { user_name, olap_entity_gid }, // 使用联合条件删除
+    });
+    if (deletedAccess) {
+      res.json({ success: true, message: "User access deleted successfully" });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: `No access record found for user ${user_name} and entity ${olap_entity_gid}`,
+      });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Error deleting user access", error });
   }
 });
 
