@@ -17,6 +17,10 @@ const Dimension = require("../models/Dimension"); // 引入维度模型
 import Cube from "../database/Cube";
 import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
+import { requireAuth } from "../middlewares/requireAuth";
+
+import { OlapEntityTypeChecker } from "@euclidolap/olap-model";
+
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
 const AdhocQuery = require("../models/AdhocQuery");
@@ -57,6 +61,86 @@ router.get("/dimensionRoles", async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Error fetching dimensions", error });
+  }
+});
+
+// 新增查询 Member full_path_text 的接口
+router.get("/member/:gid/full-path", requireAuth, async (req, res) => {
+  // const memberGid = req.params.gid;  // 获取请求参数中的 Member GID
+  const memberGid = parseInt(req.params.gid, 10);
+
+  console.log("\t\t\t\t\t\tFetching full path for member GID:", memberGid);
+
+  if (
+    OlapEntityTypeChecker.check(memberGid) ===
+    OlapEntityTypeChecker.enum.CalculatedMetric
+  ) {
+    const calculated_metric = await CalculatedMetric.findByPk(memberGid);
+    res.json({
+      success: true,
+      fullPathText: `[${calculated_metric.name}]`,
+    });
+    return;
+  }
+
+  if (
+    OlapEntityTypeChecker.check(memberGid) !== OlapEntityTypeChecker.enum.Member
+  ) {
+    throw new Error(
+      `[NDUS7560] The GID ${memberGid} does not correspond to a Member entity.`
+    );
+  }
+
+  try {
+    // 查找指定 GID 的 Member
+    const member = await Member.findByPk(memberGid);
+
+    if (!member) {
+      return res.status(404).json({
+        success: false,
+        message: `Member with GID ${memberGid} not found`,
+      });
+    }
+
+    // 获取该 Member 所在层级的所有祖先成员
+    const getFullPath = async (
+      memberGid: number,
+      path: string[] = []
+    ): Promise<string[]> => {
+      const member = await Member.findByPk(memberGid);
+      if (member) {
+        const parentMember = await Member.findByPk(member.parentGid); // 假设 Member 具有 parentGid 字段
+
+        // 拼接当前 Member 名称到路径
+        path.unshift(member.name);
+
+        if (parentMember) {
+          // 如果有父节点，则递归查询
+          return getFullPath(parentMember.gid, path);
+        } else {
+          // 如果没有父节点，说明已到达根节点，返回路径
+          return path;
+        }
+      }
+      return path;
+    };
+
+    // 获取路径
+    const fullPath = await getFullPath(memberGid);
+
+    // 将路径拼接成 string 类型：[组织维度].[集团].[公司].[事业部]
+    const fullPathText = fullPath.join("].[");
+    res.json({
+      success: true,
+      fullPathText: `[${fullPathText}]`,
+    });
+  } catch (error) {
+    console.error("Error fetching member full path:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching member full path",
+      error,
+    });
   }
 });
 

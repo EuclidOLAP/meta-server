@@ -21,7 +21,7 @@ const app = express();
 app.use(
   cors({
     origin: ["http://dev.vm:18766", "http://analysis:8766"], // allowed frontend domains
-    methods: ["GET", "POST"], // allowed request methods
+    methods: ["GET", "POST", "DELETE"], // allowed request methods
     credentials: true, // enable cookies or auth headers
   })
 );
