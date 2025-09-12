@@ -42,7 +42,7 @@ router.get("/dimensions", async (req, res) => {
   }
 });
 
-router.get("/cubes", async (req, res) => {
+router.get("/cubes", requireAuth, async (req, res) => {
   try {
     const cubes = await Cube.findAll();
     res.json({ success: true, data: cubes });
