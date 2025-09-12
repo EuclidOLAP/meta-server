@@ -18,6 +18,18 @@ initAdminUsers();
 // ##             Create and configure Express app           ##
 // ############################################################
 const app = express();
+
+// // ############################################################
+// // ##        前置通知（Before Advice）: 日志记录、身份验证等 ##
+// // ############################################################
+// const logRequest = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+//   console.log(`收到请求: ${req.method} ${req.originalUrl}`);
+//   next();  // 继续执行后续中间件或路由
+// };
+
+// // 注册全局前置通知
+// app.use(logRequest); // 前置通知
+
 app.use(
   cors({
     origin: ["http://dev.vm:18766", "http://analysis:8766"], // allowed frontend domains
@@ -34,6 +46,24 @@ app.use(cookieParser()); // parse cookies
 app.use("/auth", authRoutes); // authentication routes
 app.use("/api", metaRoutes); // metadata routes
 app.use("/md-query", adhocRoutes); // ad-hoc query routes
+
+// // ############################################################
+// // ##        后置通知（After Advice）: 修改响应数据等         ##
+// // ############################################################
+// const modifyResponse = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+//   const originalSend = res.send;  // 保存原始的 send 方法
+
+//   res.send = (body: any) => {
+//     console.log("发送响应前修改数据");
+//     const modifiedBody = { ...JSON.parse(body), modified: true };  // 对响应数据进行修改
+//     originalSend.call(res, JSON.stringify(modifiedBody));  // 发送修改后的响应
+//   };
+
+//   next();  // 继续执行后续中间件或路由
+// };
+
+// // 注册后置通知
+// app.use(modifyResponse);  // 后置通知
 
 // ############################################################
 // ##                  Start HTTP server                     ##

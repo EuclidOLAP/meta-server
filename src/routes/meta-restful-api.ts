@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+// import { Router, Request, Response, NextFunction } from "express";
 
 // const fs = require('fs').promises;
 // const path = require('path');
@@ -19,7 +20,7 @@ import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 import { requireAuth } from "../middlewares/requireAuth";
 
-import { OlapEntityTypeChecker } from "@euclidolap/olap-model";
+import { OlapEntityTypeChecker, ResponseResult } from "@euclidolap/olap-model";
 
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
@@ -30,6 +31,46 @@ const Level = require("../models/Level");
 const CalculatedMetric = require("../models/CalculatedMetric");
 
 const router = Router();
+
+
+
+
+
+
+// // 前置通知：日志记录
+// const before_request = (req: Request, res: Response, next: NextFunction) => {
+//   console.log(`[前置通知] 请求：${req.method} ${req.originalUrl}`);
+//   next();  // 继续执行后续的中间件或路由处理
+// };
+
+// // 后置通知：修改响应数据
+// const after_response = (req: Request, res: Response, next: NextFunction) => {
+//   console.log(`___________________[后置通知] 请求：${req.method} ${req.originalUrl}`);
+//   // const originalSend = res.send;
+//   // res.send = (body) => {
+//   //   // 记录响应数据
+//   //   console.log(`[后置通知] 响应数据：`, body);
+
+//   //   // 在响应数据中添加一个字段
+//   //   const modifiedBody = { ...JSON.parse(body), modified: true };
+//   //   originalSend.call(res, JSON.stringify(modifiedBody));  // 发送修改后的响应
+//   // };
+//   next();  // 继续执行后续的中间件或路由处理
+// };
+
+// // // 为整个路由模块添加前置通知和后置通知
+// router.use(before_request);  // 全局前置通知
+// router.use(after_response);  // 全局后置通知
+
+
+
+
+
+
+
+
+
+
 
 router.get("/dimensions", async (req, res) => {
   try {
@@ -44,12 +85,9 @@ router.get("/dimensions", async (req, res) => {
 
 router.get("/cubes", requireAuth, async (req, res) => {
   try {
-    const cubes = await Cube.findAll();
-    res.json({ success: true, data: cubes });
+    res.json(ResponseResult.ok(await Cube.findAll()));
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Error fetching dimensions", error });
+    res.status(500).json(ResponseResult.err(error, "Error fetching cubes"));
   }
 });
 
