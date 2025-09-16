@@ -1,5 +1,4 @@
-import { Router, Request, Response } from "express";
-// import { Router, Request, Response, NextFunction } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 
 // const fs = require('fs').promises;
 // const path = require('path');
@@ -32,45 +31,62 @@ const CalculatedMetric = require("../models/CalculatedMetric");
 
 const router = Router();
 
+// 拦截发送的数据
+const before_request = (req: Request, res: Response, next: NextFunction) => {
+  console.log(`>>>>>>>>> before request [${req.method}] ${req.originalUrl}`);
 
+  // 模拟AOP切面，注册后置通知函数
+  const originalSend = res.send;
+  const originalJson = res.json;
 
+  // 拦截 send 方法
+  res.send = function (body: any): Response {
+    // 缓存原始数据
+    res.locals.response_result = body;
 
+    originalSend.call(this, body); // 继续发送响应
 
+    return this; // 保证返回 Response 类型
+  };
 
-// // 前置通知：日志记录
-// const before_request = (req: Request, res: Response, next: NextFunction) => {
-//   console.log(`[前置通知] 请求：${req.method} ${req.originalUrl}`);
-//   next();  // 继续执行后续的中间件或路由处理
-// };
+  // 拦截 json 方法
+  res.json = function (body: any): Response {
+    // 缓存原始数据
+    res.locals.response_result = body;
 
-// // 后置通知：修改响应数据
-// const after_response = (req: Request, res: Response, next: NextFunction) => {
-//   console.log(`___________________[后置通知] 请求：${req.method} ${req.originalUrl}`);
-//   // const originalSend = res.send;
-//   // res.send = (body) => {
-//   //   // 记录响应数据
-//   //   console.log(`[后置通知] 响应数据：`, body);
+    if ((req as any).userId) {
+      console.log(`User >>>>>>>>> ${(req as any).userId} <<<<<<<<< is making a request.`);
+    }
 
-//   //   // 在响应数据中添加一个字段
-//   //   const modifiedBody = { ...JSON.parse(body), modified: true };
-//   //   originalSend.call(res, JSON.stringify(modifiedBody));  // 发送修改后的响应
-//   // };
-//   next();  // 继续执行后续的中间件或路由处理
-// };
+    if (body instanceof ResponseResult) {
+      const { success, message, data } = body;
+      if (Array.isArray(data) && data.every((item) => item instanceof Cube)) {
+        console.log(".......;;;;;; Data contains an array of Cube instances:");
+        data.forEach((cube) => {
+          console.log(`Cube GID: ${cube.gid}, Cube Name: ${cube.name}`);
+        });
+      }
+    }
 
-// // // 为整个路由模块添加前置通知和后置通知
-// router.use(before_request);  // 全局前置通知
-// router.use(after_response);  // 全局后置通知
+    originalJson.call(this, body); // 继续发送响应
 
+    return this; // 保证返回 Response 类型
+  };
 
+  // 注册 finish 事件，做后置通知处理
+  res.on("finish", () => {
+    // 获取响应数据
+    // const result = res.locals.response_result;
 
+    // 打印响应数据
+    console.log(`<<<<<<<<< after response [${req.method}] ${req.originalUrl}`);
+    // console.log("Response Data:", body);
+  });
 
+  next();
+};
 
-
-
-
-
-
+router.use(before_request);
 
 router.get("/dimensions", async (req, res) => {
   try {
