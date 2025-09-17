@@ -10,6 +10,7 @@ import { AsyncLocalStorage } from "async_hooks";
 const asyncLocalStorage = new AsyncLocalStorage();
 
 const sequelize_conn = require("../config/database");
+import { filterDataByUser } from "../permission/permission";
 
 const Dimension = require("../models/Dimension"); // 引入维度模型
 
@@ -50,25 +51,13 @@ const before_request = (req: Request, res: Response, next: NextFunction) => {
   };
 
   // 拦截 json 方法
-  res.json = function (body: any): Response {
+  res.json = function (result: any): Response {
     // 缓存原始数据
-    res.locals.response_result = body;
+    res.locals.response_result = result;
 
-    if ((req as any).userId) {
-      console.log(`User >>>>>>>>> ${(req as any).userId} <<<<<<<<< is making a request.`);
-    }
-
-    if (body instanceof ResponseResult) {
-      const { success, message, data } = body;
-      if (Array.isArray(data) && data.every((item) => item instanceof Cube)) {
-        console.log(".......;;;;;; Data contains an array of Cube instances:");
-        data.forEach((cube) => {
-          console.log(`Cube GID: ${cube.gid}, Cube Name: ${cube.name}`);
-        });
-      }
-    }
-
-    originalJson.call(this, body); // 继续发送响应
+    filterDataByUser(req, result).then(() => {
+      originalJson.call(this, result); // 继续发送响应
+    });
 
     return this; // 保证返回 Response 类型
   };
