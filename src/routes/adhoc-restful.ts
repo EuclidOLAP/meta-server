@@ -1,4 +1,7 @@
-import { Router, Request, Response } from "express";
+// import { Request, Response } from "express";
+import { Router } from "express";
+
+import { requireAuth } from "../middlewares/requireAuth";
 
 const { olapClient } = require("../grpc-client-impl");
 const MdxExecutionLog = require("../models/MdxExecutionLog");
@@ -24,7 +27,7 @@ function formatSlice(slice: any) {
 
 const adhocRouters = Router();
 
-adhocRouters.post("/mdx", async (request, response) => {
+adhocRouters.post("/mdx", requireAuth, async (request, response) => {
   const { mdx } = request.body;
 
   console.log(mdx);
@@ -38,6 +41,7 @@ adhocRouters.post("/mdx", async (request, response) => {
   const requestPayload = {
     operation_type: "MDX", // 示例操作类型，具体根据实际需求调整
     statement: mdx, // 示例 MDX 查询语句
+    user_name: (request as any).userId,
   };
   // 调用 ExecuteOperation 方法
   olapClient.ExecuteOperation(
@@ -49,7 +53,7 @@ adhocRouters.post("/mdx", async (request, response) => {
       }
 
       // 处理成功的响应
-      console.log("Grpc Response from ExecuteOperation:", grpc_olap_response);
+      // console.log("Grpc Response from ExecuteOperation:", grpc_olap_response);
 
       response.status(200).json(grpc_olap_response.vectors);
     }
