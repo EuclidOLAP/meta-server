@@ -5,6 +5,7 @@ const CalculatedMetric = require("../models/CalculatedMetric");
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 const DimensionRole = require("../models/DimensionRole");
 const Level = require("../models/Level");
@@ -413,25 +414,43 @@ async function GetAllFormulaMembers(call: any, callback: any) {
     const formulaMembers = await CalculatedMetric.findAll();
 
     // if (formulaMembers && formulaMembers.length > 0) {
-      const response = {
-        formulaMembers: formulaMembers.map((fm: any) => ({
-          olapEntityClass: "FormulaMember",
-          gid: fm.dataValues.gid,
-          name: fm.dataValues.name,
-          level: fm.dataValues.level,
-          levelGid: fm.dataValues.levelGid,
-          dimensionGid: fm.dataValues.dimensionGid,
-          hierarchyGid: fm.dataValues.hierarchyGid,
-          cubeGid: fm.dataValues.cubeGid,
-          dimensionRoleGid: fm.dataValues.dimensionRoleGid,
-          mountPointGid: fm.dataValues.mountPointGid,
-          exp: fm.dataValues.exp,
-        })),
-      };
-      callback(null, response);
+    const response = {
+      formulaMembers: formulaMembers.map((fm: any) => ({
+        olapEntityClass: "FormulaMember",
+        gid: fm.dataValues.gid,
+        name: fm.dataValues.name,
+        level: fm.dataValues.level,
+        levelGid: fm.dataValues.levelGid,
+        dimensionGid: fm.dataValues.dimensionGid,
+        hierarchyGid: fm.dataValues.hierarchyGid,
+        cubeGid: fm.dataValues.cubeGid,
+        dimensionRoleGid: fm.dataValues.dimensionRoleGid,
+        mountPointGid: fm.dataValues.mountPointGid,
+        exp: fm.dataValues.exp,
+      })),
+    };
+    callback(null, response);
     // } else {
     //   callback(new Error("No FormulaMembers found"), null);
     // }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
+async function LoadUserOlapModelAccesses(call: any, callback: any) {
+  try {
+    const accesses: UserOlapModelAccess[] = await UserOlapModelAccess.findAll({
+      where: {
+        user_name: call.request.user_name,
+      },
+    });
+
+    const response = {
+      model_accesses: accesses,
+    };
+
+    callback(null, response);
   } catch (err) {
     callback(err, null);
   }
@@ -457,6 +476,7 @@ const startMetaGrpcServer = () => {
     GetAllMembers,
     GetAllCubes,
     GetAllFormulaMembers,
+    LoadUserOlapModelAccesses,
   });
 
   // 4. 启动服务端
