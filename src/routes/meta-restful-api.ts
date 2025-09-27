@@ -16,6 +16,7 @@ const Dimension = require("../models/Dimension"); // 引入维度模型
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import Member from "../database/Member";
 import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 import { requireAuth } from "../middlewares/requireAuth";
@@ -26,7 +27,7 @@ const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
 const AdhocQuery = require("../models/AdhocQuery");
 const Hierarchy = require("../models/Hierarchy");
-const Member = require("../models/Member");
+
 const Level = require("../models/Level");
 const CalculatedMetric = require("../models/CalculatedMetric");
 
@@ -608,6 +609,10 @@ const createChildMember = async (
       level: childMemberLevel.level,
       parentGid: parent.gid,
       leaf: true,
+      // 数据库会对measure_index字段赋默认值0，这里显式赋值以避免语法警告
+      measureIndex: 0,
+      // fullPath在后续逻辑将被更新为正确值，这里先赋一个奇葩值，避免语法警告
+      fullPath: Buffer.from([0, 0, 0, 0]),
     },
     { transaction }
   );
@@ -732,6 +737,10 @@ const do_create_dimension = async ({
         level: 0,
         parentGid: 0, // Root Member 没有父节点
         leaf: false,
+        // 数据库会对measure_index字段赋默认值0，这里显式赋值以避免语法警告
+        measureIndex: 0,
+        // Root Member 的 fullPath 为空
+        fullPath: Buffer.from([]),
       },
       { transaction }
     );
@@ -790,6 +799,8 @@ router.post("/cube", async (req, res) => {
           parentGid: root_member.gid,
           measureIndex: measures.indexOf(measure_str),
           leaf: true,
+          // measure members 的 fullPath 为空
+          fullPath: Buffer.from([]),
         },
         { transaction }
       );

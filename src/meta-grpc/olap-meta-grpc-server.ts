@@ -5,12 +5,12 @@ const CalculatedMetric = require("../models/CalculatedMetric");
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import Member from "../database/Member";
 import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 const DimensionRole = require("../models/DimensionRole");
 const Level = require("../models/Level");
 const Dimension = require("../models/Dimension");
-const Member = require("../models/Member");
 const { OlapEntityType, getOlapEntityTypeByGid } = require("../utils");
 
 // 1. 加载 .proto 文件
@@ -134,6 +134,7 @@ function GetDefaultDimensionMemberByDimensionGid(call: any, callback: any) {
             level: member.level,
             parentGid: member.parentGid,
             leaf: member.leaf,
+            member_gid_full_path: member.getGidFullPathInUint64(),
           });
         })
         .catch((err: any) => {
@@ -237,7 +238,7 @@ async function LocateUniversalOlapEntityByGid(call: any, callback: any) {
           dimensionGid: dim_gid,
         },
       });
-      result = { olapEntityClass: "Member", ...member.dataValues };
+      result = { olapEntityClass: "Member", ...member?.dataValues };
       break;
   }
 
@@ -264,7 +265,7 @@ async function GetUniversalOlapEntityByGid(call: any, callback: any) {
   switch (getOlapEntityTypeByGid(universalOlapEntityGid)) {
     case OlapEntityType.MEMBER:
       const member = await Member.findByPk(universalOlapEntityGid);
-      result = { olapEntityClass: "Member", ...member.dataValues };
+      result = { olapEntityClass: "Member", ...member?.dataValues };
       break;
   }
 
@@ -288,6 +289,7 @@ async function GetChildMembersByGid(call: any, callback: any) {
         levelGid: member.levelGid,
         level: member.level,
         parentGid: member.parentGid,
+        member_gid_full_path: member.getGidFullPathInUint64(),
       })),
     };
     callback(null, response);
@@ -378,6 +380,7 @@ async function GetAllMembers(call: any, callback: any) {
           level: member.level,
           parentGid: member.parentGid,
           leaf: member.leaf,
+          member_gid_full_path: member.getGidFullPathInUint64(),
         })),
       };
       callback(null, response);
