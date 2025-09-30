@@ -35,7 +35,7 @@ const router = Router();
 
 // 拦截发送的数据
 const before_request = (req: Request, res: Response, next: NextFunction) => {
-  console.log(`>>>>>>>>> before request [${req.method}] ${req.originalUrl}`);
+  // console.log(`>>>>>>>>> before request [${req.method}] ${req.originalUrl}`);
 
   // 模拟AOP切面，注册后置通知函数
   const originalSend = res.send;
@@ -69,7 +69,7 @@ const before_request = (req: Request, res: Response, next: NextFunction) => {
     // const result = res.locals.response_result;
 
     // 打印响应数据
-    console.log(`<<<<<<<<< after response [${req.method}] ${req.originalUrl}`);
+    // console.log(`<<<<<<<<< after response [${req.method}] ${req.originalUrl}`);
     // console.log("Response Data:", body);
   });
 

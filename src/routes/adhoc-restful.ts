@@ -30,7 +30,7 @@ const adhocRouters = Router();
 adhocRouters.post("/mdx", requireAuth, async (request, response) => {
   const { mdx } = request.body;
 
-  console.log(mdx);
+  // console.log(mdx);
 
   // 异步执行存储到数据库中，并不需要处理返回值，无需 await
   /* let execution_log = await */ MdxExecutionLog.create({

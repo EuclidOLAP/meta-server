@@ -121,7 +121,7 @@ function GetDefaultDimensionMemberByDimensionGid(call: any, callback: any) {
         },
       })
         .then((member: any) => {
-          console.log(member);
+          // console.log(member);
 
           member = member.dataValues;
 
@@ -134,7 +134,7 @@ function GetDefaultDimensionMemberByDimensionGid(call: any, callback: any) {
             level: member.level,
             parentGid: member.parentGid,
             leaf: member.leaf,
-            member_gid_full_path: member.getGidFullPathInUint64(),
+            member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
           });
         })
         .catch((err: any) => {
@@ -224,7 +224,7 @@ function GetDimensionRoleByName(call: any, callback: any) {
 async function LocateUniversalOlapEntityByGid(call: any, callback: any) {
   const { originGid, targetEntityGid } = call.request;
 
-  let result = {
+  let result: any = {
     olapEntityClass: "Nothing",
   };
 
@@ -238,7 +238,17 @@ async function LocateUniversalOlapEntityByGid(call: any, callback: any) {
           dimensionGid: dim_gid,
         },
       });
-      result = { olapEntityClass: "Member", ...member?.dataValues };
+
+      if (member) {
+        result = { 
+          olapEntityClass: "Member", 
+          ...member.dataValues,
+          member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
+        };
+      } else {
+        result = { olapEntityClass: "MemberNotFound" };
+      }
+
       break;
   }
 
@@ -289,7 +299,7 @@ async function GetChildMembersByGid(call: any, callback: any) {
         levelGid: member.levelGid,
         level: member.level,
         parentGid: member.parentGid,
-        member_gid_full_path: member.getGidFullPathInUint64(),
+        member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
       })),
     };
     callback(null, response);
@@ -380,7 +390,7 @@ async function GetAllMembers(call: any, callback: any) {
           level: member.level,
           parentGid: member.parentGid,
           leaf: member.leaf,
-          member_gid_full_path: member.getGidFullPathInUint64(),
+          member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
         })),
       };
       callback(null, response);

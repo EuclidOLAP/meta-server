@@ -29,11 +29,10 @@ class Member
   public updated_by?: number;
   public description?: string;
 
-  // 添加实例方法，调用 OlapModelUtil 中的静态方法来处理 fullPath 字段
-  public getGidFullPathInUint64(): number[] {
-    if (this.fullPath) {
-      // 调用 OlapModelUtil 中的静态方法
-      return OlapModelUtil.gidFullPath_uint8Arr_into_uint64Arr(this.fullPath);
+  // 静态方法，调用 OlapModelUtil 处理 fullPath
+  public static getGidFullPathInUint64(fullPath?: Uint8Array): number[] {
+    if (fullPath) {
+      return OlapModelUtil.gidFullPath_uint8Arr_into_uint64Arr(fullPath);
     }
     return [];
   }
