@@ -1,30 +1,19 @@
-import { createOssClient, uploadBuffer } from "../oss-wrapper";
+import fs from "fs/promises";
+import path from "path";
+
 import Dimension from "../models/Dimension"; // 修改为 ES6 import 语法
 import Member from "../database/Member";
 import DimensionRole from "../models/DimensionRole"; // 修改为 ES6 import 语法
 
 import { MeasuresGenerator } from "./measures-generator";
 
-// interface MeasureRecord {
-//   fullPath: Buffer;
-//   level: number;
-// }
-
 /*
-export UPLOAD_MEASURES_TO_ALIYUNOSS_ENABLED=true
-export OSSTBM_BUCKET_REGION=oss-cn-beijing
-export OSSTBM_BUCKET_NAME=:::bucket_name:::
-export OSSTBM_ACCESS_KEY_ID=:::ACCESS_KEY_ID:::
-export OSSTBM_ACCESS_KEY_SECRET=:::ACCESS_KEY_SECRET:::
+export GEN_VCE_MEASURES_ENABLED=true
 export OSSTBM_CUBE_GID=500000000000004
 export OSSTBM_BEGINNING_POSITION=100000000000
 export OSSTBM_EXPECTED_MEASURE_RECORDS=3008760
  */
-export async function upload_measures_to_alioss(): Promise<void> {
-  const bucket_region = process.env.OSSTBM_BUCKET_REGION!;
-  const bucket_name = process.env.OSSTBM_BUCKET_NAME!;
-  const access_key_id = process.env.OSSTBM_ACCESS_KEY_ID!;
-  const access_key_secret = process.env.OSSTBM_ACCESS_KEY_SECRET!;
+export async function generate_vce_measure_slices(): Promise<void> {
   const cube_gid = parseInt(process.env.OSSTBM_CUBE_GID || "0");
   const beginning_position = process.env.OSSTBM_BEGINNING_POSITION!;
   const expectedMeasureRecords = process.env.OSSTBM_EXPECTED_MEASURE_RECORDS!;
@@ -42,7 +31,6 @@ export async function upload_measures_to_alioss(): Promise<void> {
       },
     });
     dimensionRoles = dimensionRoles.map((dr) => dr.dataValues);
-
     dimensionRoles.sort((a: any, b: any) => a.gid - b.gid);
 
     for (const dr of dimensionRoles) {
@@ -80,6 +68,8 @@ export async function upload_measures_to_alioss(): Promise<void> {
     });
     measure_members = measure_members.map((m: any) => m.dataValues);
 
+    const vce_inputs_dir = path.join(process.cwd(), "vce-inputs");
+
     /**
      * (euclid node) -> (child node)
      *
@@ -110,52 +100,11 @@ export async function upload_measures_to_alioss(): Promise<void> {
     intent_buff.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
 
     const BUFF_CAPACITY = 16 * 1024 * 1024;
+    // const BUFF_CAPACITY = 128 * 1024;
     let intent_body_buff = Buffer.alloc(BUFF_CAPACITY);
 
     let buff_num = 0;
     let currentOffset = 0;
-
-    let oss_cli = createOssClient(
-      bucket_region,
-      access_key_id,
-      access_key_secret,
-      bucket_name
-    );
-
-    const do_upload_slice_to_oss = async (
-      intent_body_buff: Buffer,
-      oss_file_path: string,
-      flag_of_last: boolean = false
-    ): Promise<void> => {
-      const combinedBuffer = flag_of_last
-        ? intent_body_buff
-        : Buffer.concat([intent_buff, intent_body_buff]);
-      // const combinedBuffer = Buffer.concat([intent_buff, intent_body_buff]);
-      combinedBuffer.writeUInt32LE(combinedBuffer.length, 0);
-
-      while (true) {
-        try {
-          await uploadBuffer(oss_cli, oss_file_path, combinedBuffer);
-          break;
-        } catch (error) {
-          console.error(
-            "############################# 上传文件到OSS失败，重试中...",
-            error
-          );
-
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-
-          oss_cli = createOssClient(
-            bucket_region,
-            access_key_id,
-            access_key_secret,
-            bucket_name
-          );
-        }
-      }
-
-      console.log(`>>>>>>>>> ${oss_file_path}`);
-    };
 
     while (true) {
       const vector_pos = ovg.next();
@@ -207,9 +156,23 @@ export async function upload_measures_to_alioss(): Promise<void> {
        * 将 intent_body_buff 清空
        */
       if (currentOffset > BUFF_CAPACITY / 2) {
-        await do_upload_slice_to_oss(
+        // await do_upload_slice_to_oss(
+        //   intent_body_buff.slice(0, currentOffset),
+        //   `/measures${cubeGid}/${beginning_position}_${expectedMeasureRecords}/part-${buff_num}`
+        // );
+        const combinedBuffer = Buffer.concat([
+          intent_buff,
           intent_body_buff.slice(0, currentOffset),
-          `/measures${cubeGid}/${beginning_position}_${expectedMeasureRecords}/part-${buff_num}`
+        ]);
+        combinedBuffer.writeUInt32LE(combinedBuffer.length, 0);
+        const filePath = path.join(
+          vce_inputs_dir,
+          `${cube_gid}_${beginning_position}-${expectedMeasureRecords}_${buff_num}`
+        );
+        await fs.writeFile(filePath, combinedBuffer);
+
+        console.log(
+          `        ........ ${cube_gid}_${beginning_position}-${expectedMeasureRecords}_${buff_num}`
         );
 
         buff_num++;
@@ -217,10 +180,24 @@ export async function upload_measures_to_alioss(): Promise<void> {
       }
     }
 
-    // 将最后残余数据上传至OSS
-    await do_upload_slice_to_oss(
+    // // 将最后残余数据上传至OSS
+    // await do_upload_slice_to_oss(
+    //   intent_body_buff.slice(0, currentOffset),
+    //   `/measures${cubeGid}/${beginning_position}_${expectedMeasureRecords}/part-${buff_num}`
+    // );
+    const finalCombinedBuffer = Buffer.concat([
+      intent_buff,
       intent_body_buff.slice(0, currentOffset),
-      `/measures${cubeGid}/${beginning_position}_${expectedMeasureRecords}/part-${buff_num}`
+    ]);
+    finalCombinedBuffer.writeUInt32LE(finalCombinedBuffer.length, 0);
+    const finalFilePath = path.join(
+      vce_inputs_dir,
+      `${cube_gid}_${beginning_position}-${expectedMeasureRecords}_${buff_num}`
+    );
+    await fs.writeFile(finalFilePath, finalCombinedBuffer);
+
+    console.log(
+      `        ........ ${cube_gid}_${beginning_position}-${expectedMeasureRecords}_${buff_num}`
     );
 
     // // 上传结束标志
@@ -232,8 +209,11 @@ export async function upload_measures_to_alioss(): Promise<void> {
     // );
   };
 
+  console.log(
+    `######### [准备] CUBE_GID: ${cube_gid}, ${beginning_position}_${expectedMeasureRecords}`
+  );
   await do_generate_measures(cube_gid, expectedMeasureRecords);
   console.log(
-    `#################################### Upload measures [ ${beginning_position} ${expectedMeasureRecords} ] to Aliyun OSS finished.`
+    `######### [度量区间数据生成完毕] CUBE_GID: ${cube_gid}, ${beginning_position}_${expectedMeasureRecords}`
   );
 }
