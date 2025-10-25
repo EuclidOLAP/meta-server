@@ -5,6 +5,8 @@ import { Router, Request, Response, NextFunction } from "express";
 import fs from "fs/promises";
 import path from "path";
 
+import { createOssClient, uploadBuffer } from '../oss-wrapper';
+
 // const { AsyncLocalStorage } = require('async_hooks');
 import { AsyncLocalStorage } from "async_hooks";
 const asyncLocalStorage = new AsyncLocalStorage();
@@ -433,6 +435,8 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
       );
     }
 
+    let oss_cli = createOssClient();
+
     /**
      * (euclid node) -> (child node)
      *
@@ -462,8 +466,9 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
     intent_buff.writeUInt32LE(dimensionRoles.length, 22); // 4 bytes - {DimRoles amount}
     intent_buff.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
 
-    // 创建一个Buffer对象————intent_body_buff，其初始内存大小为2M
-    let intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
+    const BUFF_CAPACITY = 16 * 1024 * 1024;
+    let intent_body_buff = Buffer.alloc(BUFF_CAPACITY);
+
     let buff_num = 0;
     let currentOffset = 0;
 
@@ -516,7 +521,7 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
        * buff_num++
        * 将 intent_body_buff 清空
        */
-      if (currentOffset > 1024 * 1024) {
+      if (currentOffset > (BUFF_CAPACITY / 2)) {
         const combinedBuffer = Buffer.concat([
           intent_buff,
           intent_body_buff.slice(0, currentOffset),
@@ -524,12 +529,21 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
         combinedBuffer.writeUInt32LE(combinedBuffer.length, 0);
 
         const filePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+
         await fs.writeFile(filePath, combinedBuffer);
+        // while (true) {
+        //   try {
+        //     await uploadBuffer(oss_cli, filePath, combinedBuffer);
+        //     break;
+        //   } catch (error) {
+        //     console.error("############################# 上传文件到OSS失败，重试中...", error);
+        //     oss_cli = createOssClient();
+        //   }
+        // }
 
         console.log(`>>>>>>>>> ${filePath}`);
 
         buff_num++;
-        intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
         currentOffset = 0;
       }
     }
@@ -546,7 +560,18 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
     finalCombinedBuffer.writeUInt32LE(finalCombinedBuffer.length, 0);
 
     const finalFilePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+
     await fs.writeFile(finalFilePath, finalCombinedBuffer);
+    // while (true) {
+    //   try {
+    //     await uploadBuffer(oss_cli, finalFilePath, finalCombinedBuffer);
+    //     break;
+    //   } catch (error) {
+    //     console.error("############################# 上传文件到OSS失败，重试中...", error);
+    //     oss_cli = createOssClient();
+    //   }
+    // }
+
     console.log(`>>>>>>>>> finalFilePath : ${finalFilePath}`);
   };
 
