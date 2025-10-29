@@ -8,6 +8,30 @@ import { REFRESH_TOKEN_SECRET } from "../config/jwt";
 
 const router = Router();
 
+// // 前置通知：日志记录
+// const logRequest = (req, res, next) => {
+//   console.log(`[前置通知] 请求：${req.method} ${req.originalUrl}`);
+//   next();  // 继续执行后续的中间件或路由处理
+// };
+
+// // 后置通知：修改响应数据
+// const modifyResponse = (req, res, next) => {
+//   const originalSend = res.send;
+//   res.send = (body) => {
+//     // 记录响应数据
+//     console.log(`[后置通知] 响应数据：`, body);
+
+//     // 在响应数据中添加一个字段
+//     const modifiedBody = { ...JSON.parse(body), modified: true };
+//     originalSend.call(res, JSON.stringify(modifiedBody));  // 发送修改后的响应
+//   };
+//   next();  // 继续执行后续的中间件或路由处理
+// };
+
+// // 为整个路由模块添加前置通知和后置通知
+// router.use(logRequest);  // 全局前置通知
+// router.use(modifyResponse);  // 全局后置通知
+
 // Login
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;

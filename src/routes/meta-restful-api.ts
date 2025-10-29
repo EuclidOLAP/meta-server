@@ -1,35 +1,84 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 
 // const fs = require('fs').promises;
 // const path = require('path');
 import fs from "fs/promises";
 import path from "path";
 
+import { createOssClient, uploadBuffer } from '../oss-wrapper';
+
 // const { AsyncLocalStorage } = require('async_hooks');
 import { AsyncLocalStorage } from "async_hooks";
 const asyncLocalStorage = new AsyncLocalStorage();
 
 const sequelize_conn = require("../config/database");
+import { filterDataByUser } from "../permission/permission";
 
 const Dimension = require("../models/Dimension"); // 引入维度模型
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import Member from "../database/Member";
 import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 import { requireAuth } from "../middlewares/requireAuth";
 
-import { OlapEntityTypeChecker } from "@euclidolap/olap-model";
+import { OlapEntityTypeChecker, ResponseResult } from "@euclidolap/olap-model";
 
 const DimensionRole = require("../models/DimensionRole");
 const Dashboard = require("../models/Dashboard"); // 新增Dashboard模型引入
 const AdhocQuery = require("../models/AdhocQuery");
 const Hierarchy = require("../models/Hierarchy");
-const Member = require("../models/Member");
+
 const Level = require("../models/Level");
 const CalculatedMetric = require("../models/CalculatedMetric");
 
 const router = Router();
+
+// 拦截发送的数据
+const before_request = (req: Request, res: Response, next: NextFunction) => {
+  // console.log(`>>>>>>>>> before request [${req.method}] ${req.originalUrl}`);
+
+  // 模拟AOP切面，注册后置通知函数
+  const originalSend = res.send;
+  const originalJson = res.json;
+
+  // 拦截 send 方法
+  res.send = function (body: any): Response {
+    // 缓存原始数据
+    res.locals.response_result = body;
+
+    originalSend.call(this, body); // 继续发送响应
+
+    return this; // 保证返回 Response 类型
+  };
+
+  // 拦截 json 方法
+  res.json = function (result: any): Response {
+    // 缓存原始数据
+    res.locals.response_result = result;
+
+    filterDataByUser(req, result).then(() => {
+      originalJson.call(this, result); // 继续发送响应
+    });
+
+    return this; // 保证返回 Response 类型
+  };
+
+  // 注册 finish 事件，做后置通知处理
+  res.on("finish", () => {
+    // 获取响应数据
+    // const result = res.locals.response_result;
+
+    // 打印响应数据
+    // console.log(`<<<<<<<<< after response [${req.method}] ${req.originalUrl}`);
+    // console.log("Response Data:", body);
+  });
+
+  next();
+};
+
+router.use(before_request);
 
 router.get("/dimensions", async (req, res) => {
   try {
@@ -42,14 +91,11 @@ router.get("/dimensions", async (req, res) => {
   }
 });
 
-router.get("/cubes", async (req, res) => {
+router.get("/cubes", requireAuth, async (req, res) => {
   try {
-    const cubes = await Cube.findAll();
-    res.json({ success: true, data: cubes });
+    res.json(ResponseResult.ok(await Cube.findAll()));
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Error fetching dimensions", error });
+    res.status(500).json(ResponseResult.err(error, "Error fetching cubes"));
   }
 });
 
@@ -389,6 +435,8 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
       );
     }
 
+    let oss_cli = createOssClient();
+
     /**
      * (euclid node) -> (child node)
      *
@@ -418,8 +466,9 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
     intent_buff.writeUInt32LE(dimensionRoles.length, 22); // 4 bytes - {DimRoles amount}
     intent_buff.writeUInt32LE(measure_members.length, 26); // 4 bytes - {MeasureMbrs amount}
 
-    // 创建一个Buffer对象————intent_body_buff，其初始内存大小为2M
-    let intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
+    const BUFF_CAPACITY = 16 * 1024 * 1024;
+    let intent_body_buff = Buffer.alloc(BUFF_CAPACITY);
+
     let buff_num = 0;
     let currentOffset = 0;
 
@@ -472,7 +521,7 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
        * buff_num++
        * 将 intent_body_buff 清空
        */
-      if (currentOffset > 1024 * 1024) {
+      if (currentOffset > (BUFF_CAPACITY / 2)) {
         const combinedBuffer = Buffer.concat([
           intent_buff,
           intent_body_buff.slice(0, currentOffset),
@@ -480,12 +529,21 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
         combinedBuffer.writeUInt32LE(combinedBuffer.length, 0);
 
         const filePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+
         await fs.writeFile(filePath, combinedBuffer);
+        // while (true) {
+        //   try {
+        //     await uploadBuffer(oss_cli, filePath, combinedBuffer);
+        //     break;
+        //   } catch (error) {
+        //     console.error("############################# 上传文件到OSS失败，重试中...", error);
+        //     oss_cli = createOssClient();
+        //   }
+        // }
 
         console.log(`>>>>>>>>> ${filePath}`);
 
         buff_num++;
-        intent_body_buff = Buffer.alloc(2 * 1024 * 1024);
         currentOffset = 0;
       }
     }
@@ -502,7 +560,18 @@ router.post("/cube/:gid/generate-measures", async (req, res) => {
     finalCombinedBuffer.writeUInt32LE(finalCombinedBuffer.length, 0);
 
     const finalFilePath = path.join(vce_inputs_dir, `${cubeGid}-${buff_num}`);
+
     await fs.writeFile(finalFilePath, finalCombinedBuffer);
+    // while (true) {
+    //   try {
+    //     await uploadBuffer(oss_cli, finalFilePath, finalCombinedBuffer);
+    //     break;
+    //   } catch (error) {
+    //     console.error("############################# 上传文件到OSS失败，重试中...", error);
+    //     oss_cli = createOssClient();
+    //   }
+    // }
+
     console.log(`>>>>>>>>> finalFilePath : ${finalFilePath}`);
   };
 
@@ -565,6 +634,10 @@ const createChildMember = async (
       level: childMemberLevel.level,
       parentGid: parent.gid,
       leaf: true,
+      // 数据库会对measure_index字段赋默认值0，这里显式赋值以避免语法警告
+      measureIndex: 0,
+      // fullPath在后续逻辑将被更新为正确值，这里先赋一个奇葩值，避免语法警告
+      fullPath: Buffer.from([0, 0, 0, 0]),
     },
     { transaction }
   );
@@ -689,6 +762,10 @@ const do_create_dimension = async ({
         level: 0,
         parentGid: 0, // Root Member 没有父节点
         leaf: false,
+        // 数据库会对measure_index字段赋默认值0，这里显式赋值以避免语法警告
+        measureIndex: 0,
+        // Root Member 的 fullPath 为空
+        fullPath: Buffer.from([]),
       },
       { transaction }
     );
@@ -747,6 +824,8 @@ router.post("/cube", async (req, res) => {
           parentGid: root_member.gid,
           measureIndex: measures.indexOf(measure_str),
           leaf: true,
+          // measure members 的 fullPath 为空
+          fullPath: Buffer.from([]),
         },
         { transaction }
       );

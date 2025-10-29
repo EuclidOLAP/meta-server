@@ -17,6 +17,19 @@ class UserOlapModelAccess
   public dimension_role_gid?: number;
   public olap_entity_gid!: number;
   public has_access!: boolean;
+
+   // 静态方法：根据 user_name 和 has_access 查询用户权限
+  static async getUserAccessByNameAndStatus(
+    user_name: string,
+    has_access: boolean
+  ): Promise<UserOlapModelAccess[]> {
+    return await UserOlapModelAccess.findAll({
+      where: {
+        user_name: user_name,
+        has_access: has_access,
+      },
+    });
+  }
 }
 
 UserOlapModelAccess.init(

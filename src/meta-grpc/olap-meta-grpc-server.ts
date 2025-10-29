@@ -5,11 +5,12 @@ const CalculatedMetric = require("../models/CalculatedMetric");
 
 // const Cube = require("../models/Cube");
 import Cube from "../database/Cube";
+import Member from "../database/Member";
+import UserOlapModelAccess from "../database/UserOlapModelAccess";
 
 const DimensionRole = require("../models/DimensionRole");
 const Level = require("../models/Level");
 const Dimension = require("../models/Dimension");
-const Member = require("../models/Member");
 const { OlapEntityType, getOlapEntityTypeByGid } = require("../utils");
 
 // 1. 加载 .proto 文件
@@ -120,7 +121,7 @@ function GetDefaultDimensionMemberByDimensionGid(call: any, callback: any) {
         },
       })
         .then((member: any) => {
-          console.log(member);
+          // console.log(member);
 
           member = member.dataValues;
 
@@ -133,6 +134,7 @@ function GetDefaultDimensionMemberByDimensionGid(call: any, callback: any) {
             level: member.level,
             parentGid: member.parentGid,
             leaf: member.leaf,
+            member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
           });
         })
         .catch((err: any) => {
@@ -222,7 +224,7 @@ function GetDimensionRoleByName(call: any, callback: any) {
 async function LocateUniversalOlapEntityByGid(call: any, callback: any) {
   const { originGid, targetEntityGid } = call.request;
 
-  let result = {
+  let result: any = {
     olapEntityClass: "Nothing",
   };
 
@@ -236,7 +238,17 @@ async function LocateUniversalOlapEntityByGid(call: any, callback: any) {
           dimensionGid: dim_gid,
         },
       });
-      result = { olapEntityClass: "Member", ...member.dataValues };
+
+      if (member) {
+        result = { 
+          olapEntityClass: "Member", 
+          ...member.dataValues,
+          member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
+        };
+      } else {
+        result = { olapEntityClass: "MemberNotFound" };
+      }
+
       break;
   }
 
@@ -263,7 +275,7 @@ async function GetUniversalOlapEntityByGid(call: any, callback: any) {
   switch (getOlapEntityTypeByGid(universalOlapEntityGid)) {
     case OlapEntityType.MEMBER:
       const member = await Member.findByPk(universalOlapEntityGid);
-      result = { olapEntityClass: "Member", ...member.dataValues };
+      result = { olapEntityClass: "Member", ...member?.dataValues };
       break;
   }
 
@@ -287,6 +299,7 @@ async function GetChildMembersByGid(call: any, callback: any) {
         levelGid: member.levelGid,
         level: member.level,
         parentGid: member.parentGid,
+        member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
       })),
     };
     callback(null, response);
@@ -377,6 +390,7 @@ async function GetAllMembers(call: any, callback: any) {
           level: member.level,
           parentGid: member.parentGid,
           leaf: member.leaf,
+          member_gid_full_path: Member.getGidFullPathInUint64(member.fullPath),
         })),
       };
       callback(null, response);
@@ -413,25 +427,43 @@ async function GetAllFormulaMembers(call: any, callback: any) {
     const formulaMembers = await CalculatedMetric.findAll();
 
     // if (formulaMembers && formulaMembers.length > 0) {
-      const response = {
-        formulaMembers: formulaMembers.map((fm: any) => ({
-          olapEntityClass: "FormulaMember",
-          gid: fm.dataValues.gid,
-          name: fm.dataValues.name,
-          level: fm.dataValues.level,
-          levelGid: fm.dataValues.levelGid,
-          dimensionGid: fm.dataValues.dimensionGid,
-          hierarchyGid: fm.dataValues.hierarchyGid,
-          cubeGid: fm.dataValues.cubeGid,
-          dimensionRoleGid: fm.dataValues.dimensionRoleGid,
-          mountPointGid: fm.dataValues.mountPointGid,
-          exp: fm.dataValues.exp,
-        })),
-      };
-      callback(null, response);
+    const response = {
+      formulaMembers: formulaMembers.map((fm: any) => ({
+        olapEntityClass: "FormulaMember",
+        gid: fm.dataValues.gid,
+        name: fm.dataValues.name,
+        level: fm.dataValues.level,
+        levelGid: fm.dataValues.levelGid,
+        dimensionGid: fm.dataValues.dimensionGid,
+        hierarchyGid: fm.dataValues.hierarchyGid,
+        cubeGid: fm.dataValues.cubeGid,
+        dimensionRoleGid: fm.dataValues.dimensionRoleGid,
+        mountPointGid: fm.dataValues.mountPointGid,
+        exp: fm.dataValues.exp,
+      })),
+    };
+    callback(null, response);
     // } else {
     //   callback(new Error("No FormulaMembers found"), null);
     // }
+  } catch (err) {
+    callback(err, null);
+  }
+}
+
+async function LoadUserOlapModelAccesses(call: any, callback: any) {
+  try {
+    const accesses: UserOlapModelAccess[] = await UserOlapModelAccess.findAll({
+      where: {
+        user_name: call.request.user_name,
+      },
+    });
+
+    const response = {
+      model_accesses: accesses,
+    };
+
+    callback(null, response);
   } catch (err) {
     callback(err, null);
   }
@@ -457,6 +489,7 @@ const startMetaGrpcServer = () => {
     GetAllMembers,
     GetAllCubes,
     GetAllFormulaMembers,
+    LoadUserOlapModelAccesses,
   });
 
   // 4. 启动服务端
