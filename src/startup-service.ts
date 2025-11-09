@@ -31,7 +31,7 @@ export function startup_olap_meta_service() {
 
   app.use(
     cors({
-      origin: ["http://dev.vm:18766", "http://analysis:8766"], // allowed frontend domains
+      origin: ["http://192.168.235.129:18766", "http://192.168.235.129:8766"], // allowed frontend domains
       methods: ["GET", "POST", "DELETE"], // allowed request methods
       credentials: true, // enable cookies or auth headers
     })
